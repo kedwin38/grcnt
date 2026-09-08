@@ -1,0 +1,229 @@
+// Green Color Networks — database schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── People ──────────────────────────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String   @unique // normalized 2547XXXXXXXX / 2541XXXXXXXX
+  email        String?
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders  Order[]
+  tickets SupportTicket[]
+  replies TicketReply[]
+  audits  AuditLog[]
+}
+
+// ─── Catalog ─────────────────────────────────────────────────────────────────
+
+// Field schema (JSON) drives the dynamic product form per category, e.g.
+//   [ { "key": "size_gb", "label": "Size (GB)", "type": "number", "unit": "GB",
+//       "badge": true } ]
+model Category {
+  id             Int      @id @default(autoincrement())
+  name           String
+  slug           String   @unique
+  description    String?
+  icon           String   @default("package") // lucide icon name
+  requiresImage  Boolean  @default(false)
+  tracksStock    Boolean  @default(false)
+  instantTopup   Boolean  @default(true) // fulfilled as airtime/data top-up
+  fields         String   @default("[]") // JSON array of field definitions
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  categoryId     Int
+  name           String
+  slug           String   @unique
+  description    String?
+  price          Int // whole KES
+  compareAtPrice Int? // optional "was" price for anchoring
+  images         String   @default("[]") // JSON: [{ id, alt }]
+  attributes     String   @default("{}") // JSON keyed by category field key
+  stock          Int? // null = untracked/unlimited (bundles, airtime)
+  lowStockAt     Int      @default(3)
+  active         Boolean  @default(true)
+  featured       Boolean  @default(false)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  orderItems OrderItem[]
+}
+
+model ImageAsset {
+  id        Int      @id @default(autoincrement())
+  mime      String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
+// ─── Orders & payments ───────────────────────────────────────────────────────
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum Fulfilment {
+  INSTANT_TOPUP
+  PICKUP
+  DELIVERY
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  code          String      @unique // GCN-XXXXXXXX
+  userId        Int
+  customerName  String
+  customerPhone String
+  status        OrderStatus @default(PENDING_PAYMENT)
+  fulfilment    Fulfilment  @default(INSTANT_TOPUP)
+  address       String?
+  topupPhone    String? // Safaricom line to receive bundles/airtime
+  notes         String?
+  subtotal      Int
+  total         Int
+  topupRef      String? // Safaricom top-up transaction reference
+  cancelledAt   DateTime?
+  refundedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id])
+  items    OrderItem[]
+  payments Payment[]
+}
+
+model OrderItem {
+  id          Int    @id @default(autoincrement())
+  orderId     Int
+  productId   Int?
+  productName String // snapshot
+  unitPrice   Int // snapshot
+  qty         Int
+  lineTotal   Int
+  attributes  String @default("{}") // snapshot
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+model Payment {
+  id                Int           @id @default(autoincrement())
+  orderId           Int
+  status            PaymentStatus @default(PENDING)
+  amount            Int
+  phone             String
+  merchantRequestId String?
+  checkoutRequestId String?       @unique
+  resultCode        String?
+  resultDesc        String?
+  mpesaReceipt      String?
+  transactionDate   String?
+  rawCallback       String? // full Daraja payload for audit
+  simulated         Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── Support ─────────────────────────────────────────────────────────────────
+
+enum TicketStatus {
+  NEW
+  OPEN
+  RESOLVED
+}
+
+model SupportTicket {
+  id        Int          @id @default(autoincrement())
+  code      String       @unique // TKT-XXXXXX
+  userId    Int?
+  name      String
+  phone     String
+  subject   String
+  message   String
+  status    TicketStatus @default(NEW)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user    User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  replies TicketReply[]
+}
+
+model TicketReply {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int?
+  fromStaff Boolean  @default(false)
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+}
+
+// ─── Settings & audit ────────────────────────────────────────────────────────
+
+// One row per settings group ("business", "mpesa", "seo").
+// Value = AES-256-GCM encrypted JSON so Daraja credentials never sit in code
+// or in plaintext in the database. Fully editable from the admin UI.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  actorName String?
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+}

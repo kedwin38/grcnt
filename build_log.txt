@@ -1,0 +1,106 @@
+
+> green-color-networks@1.0.0 build
+> prisma generate && next build
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.19.3) to .\node_modules\@prisma\client in 717ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+   ▲ Next.js 15.5.25
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 21.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/16) ...
+   Generating static pages (4/16) 
+   Generating static pages (8/16) 
+   Generating static pages (12/16) 
+ ✓ Generating static pages (16/16)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ƒ /                                      128 B         110 kB
+├ ƒ /_not-found                            215 B         103 kB
+├ ƒ /about                                 198 B         106 kB
+├ ƒ /account                             2.34 kB         105 kB
+├ ƒ /admin                               1.14 kB         107 kB
+├ ƒ /admin/audit                           215 B         103 kB
+├ ƒ /admin/categories                    4.83 kB         107 kB
+├ ƒ /admin/customers                       198 B         106 kB
+├ ƒ /admin/customers/[id]                  198 B         106 kB
+├ ƒ /admin/login                         2.15 kB         108 kB
+├ ƒ /admin/orders                          198 B         106 kB
+├ ƒ /admin/orders/[id]                   2.79 kB         109 kB
+├ ƒ /admin/products                        198 B         106 kB
+├ ƒ /admin/products/[id]                   128 B         111 kB
+├ ƒ /admin/products/new                    128 B         111 kB
+├ ƒ /admin/settings                      4.18 kB         107 kB
+├ ƒ /admin/staff                         3.34 kB         106 kB
+├ ƒ /admin/support                         198 B         106 kB
+├ ƒ /admin/support/[id]                  2.04 kB         108 kB
+├ ƒ /api/admin/categories                  215 B         103 kB
+├ ƒ /api/admin/categories/[id]             215 B         103 kB
+├ ƒ /api/admin/export/[type]               215 B         103 kB
+├ ƒ /api/admin/orders/[id]/status          215 B         103 kB
+├ ƒ /api/admin/products                    215 B         103 kB
+├ ƒ /api/admin/products/[id]               215 B         103 kB
+├ ƒ /api/admin/settings                    215 B         103 kB
+├ ƒ /api/admin/settings/test-daraja        215 B         103 kB
+├ ƒ /api/admin/staff                       215 B         103 kB
+├ ƒ /api/admin/staff/[id]                  215 B         103 kB
+├ ƒ /api/admin/support/[id]                215 B         103 kB
+├ ƒ /api/admin/support/count               215 B         103 kB
+├ ƒ /api/admin/uploads                     215 B         103 kB
+├ ƒ /api/auth/login                        215 B         103 kB
+├ ƒ /api/auth/logout                       215 B         103 kB
+├ ƒ /api/auth/me                           215 B         103 kB
+├ ƒ /api/auth/profile                      215 B         103 kB
+├ ƒ /api/auth/register                     215 B         103 kB
+├ ƒ /api/health                            215 B         103 kB
+├ ƒ /api/img/[id]                          215 B         103 kB
+├ ƒ /api/mpesa/callback                    215 B         103 kB
+├ ƒ /api/orders                            215 B         103 kB
+├ ƒ /api/orders/track                      215 B         103 kB
+├ ƒ /api/payments/status/[code]            215 B         103 kB
+├ ƒ /api/payments/stk                      215 B         103 kB
+├ ƒ /api/support/tickets                   215 B         103 kB
+├ ƒ /api/support/tickets/[code]            215 B         103 kB
+├ ƒ /cart                                3.12 kB         109 kB
+├ ƒ /checkout                            4.32 kB         110 kB
+├ ƒ /checkout/pay/[code]                 3.67 kB         106 kB
+├ ƒ /faq                                   198 B         106 kB
+├ ○ /icon.svg                                0 B            0 B
+├ ƒ /login                                2.1 kB         108 kB
+├ ○ /manifest.webmanifest                  215 B         103 kB
+├ ƒ /orders                                198 B         106 kB
+├ ƒ /orders/[code]                       1.13 kB         107 kB
+├ ƒ /orders/track                        3.65 kB         106 kB
+├ ƒ /privacy                               215 B         103 kB
+├ ƒ /product/[slug]                      2.31 kB         108 kB
+├ ƒ /refunds                               198 B         106 kB
+├ ƒ /register                            2.24 kB         108 kB
+├ ○ /robots.txt                            215 B         103 kB
+├ ƒ /shop                                  128 B         110 kB
+├ ƒ /sitemap.xml                           215 B         103 kB
+├ ƒ /support                             2.65 kB         109 kB
+├ ƒ /support/[code]                      2.86 kB         105 kB
+└ ƒ /terms                                 198 B         106 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/1255-7316b50163a428e6.js      46.4 kB
+  ├ chunks/4bd1b696-f785427dddbba9fb.js  54.2 kB
+  └ other shared chunks (total)             2 kB
+
+
+ƒ Middleware                             34.1 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

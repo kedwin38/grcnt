@@ -1,0 +1,36 @@
+{
+  "name": "green-color-networks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Green Color Networks — Safaricom products e-commerce platform (airtime, data bundles, minutes, phones) with M-Pesa Daraja payments and full admin back-office.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "node scripts/start.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "db:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.5.0",
+    "bcryptjs": "^3.0.2",
+    "iron-session": "^8.0.3",
+    "lucide-react": "^0.487.0",
+    "nanoid": "^5.1.5",
+    "next": "^15.3.0",
+    "prisma": "^6.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.3",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.3",
+    "typescript": "^5.8.3"
+  }
+}
