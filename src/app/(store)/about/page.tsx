@@ -14,8 +14,8 @@ export default async function AboutPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
       <div className="section-eyebrow">About</div>
-      <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-1">
-        Neighbourhood trust, <span className="text-brand-600">online</span>.
+      <h1 className="hero-title text-3xl sm:text-4xl mt-1">
+        Neighbourhood trust, <span className="text-brand-600 italic">online</span>.
       </h1>
       <p className="text-ink-soft text-lg leading-relaxed mt-4 max-w-2xl">
         {business.description}

@@ -98,9 +98,9 @@ export default async function HomePage() {
               <BadgeCheck className="w-4 h-4" />
               Trusted Safaricom products reseller in Kenya
             </div>
-            <h1 className="mt-5 text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.08]">
+            <h1 className="hero-title mt-5 text-[2.75rem] sm:text-6xl">
               Everything Safaricom.
-              <span className="block text-brand-300">One green shop.</span>
+              <span className="block text-brand-300 italic">One green shop.</span>
             </h1>
             <p className="mt-5 text-lg text-white/70 leading-relaxed max-w-lg">
               Data bundles, airtime, minutes and the latest phones — at prices that
@@ -315,7 +315,7 @@ export default async function HomePage() {
             <div className="text-brand-300 font-bold text-[13px] uppercase tracking-[0.14em]">
               How it works
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">
+            <h2 className="hero-title text-2xl sm:text-3xl mt-1">
               From cart to connected in three steps
             </h2>
             <div className="mt-10 grid md:grid-cols-3 gap-8">
