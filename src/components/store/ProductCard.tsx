@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Check, ShoppingCart } from "lucide-react";
 import { useCart } from "./CartProvider";
+import { useToast } from "./Toast";
 import { formatKES } from "@/lib/format";
 import { CategoryIcon } from "./categoryIcon";
 
@@ -24,6 +25,7 @@ export type CardProduct = {
 
 export function ProductCard({ product }: { product: CardProduct }) {
   const { add } = useCart();
+  const toast = useToast();
   const router = useRouter();
   const [added, setAdded] = useState(false);
   const soldOut = product.stock !== null && product.stock !== undefined && product.stock <= 0;
@@ -42,6 +44,13 @@ export function ProductCard({ product }: { product: CardProduct }) {
     if (soldOut) return;
     add(item);
     setAdded(true);
+    toast.show({
+      title: `${product.name} added to cart`,
+      description: formatKES(product.price),
+      variant: "cart",
+      actionHref: "/cart",
+      actionLabel: "View cart",
+    });
     setTimeout(() => setAdded(false), 1400);
   }
 
@@ -49,17 +58,24 @@ export function ProductCard({ product }: { product: CardProduct }) {
     <div className="card card-hover flex flex-col overflow-hidden group">
       <Link
         href={`/product/${product.slug}`}
-        className="block focus-visible:outline-none"
+        className="block relative focus-visible:outline-none overflow-hidden"
         aria-label={product.name}
       >
         {product.imageId ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`/api/img/${product.imageId}`}
-            alt={product.name}
-            className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            loading="lazy"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/img/${product.imageId}`}
+              alt={product.name}
+              className="aspect-[4/3] w-full object-cover transition-transform duration-300 group-hover:scale-[1.06]"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/10 transition-colors duration-300 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
+              <span className="text-white text-xs font-bold bg-ink/70 backdrop-blur-sm rounded-full px-3 py-1.5 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                View details
+              </span>
+            </div>
+          </>
         ) : (
           <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 flex flex-col items-center justify-center text-white overflow-hidden">
             <div

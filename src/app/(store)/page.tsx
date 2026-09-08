@@ -5,11 +5,14 @@ import {
   ClipboardCheck,
   CreditCard,
   Headset,
+  Layers,
+  Lock,
   PackageCheck,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Timer,
+  Users,
   Wallet,
 } from "lucide-react";
 import { db } from "@/lib/db";
@@ -17,12 +20,14 @@ import { getSettingGroup } from "@/lib/settings";
 import { toCardProduct } from "@/lib/catalog";
 import { ProductCard } from "@/components/store/ProductCard";
 import { CategoryIcon } from "@/components/store/categoryIcon";
+import { Reveal } from "@/components/store/Reveal";
+import { CountUp } from "@/components/store/CountUp";
 import { prettyPhone } from "@/lib/format";
 
 export default async function HomePage() {
   const business = await getSettingGroup("business");
 
-  const [categories, featured] = await Promise.all([
+  const [categories, featured, fulfilledOrders, customerCount, productCount] = await Promise.all([
     db.category.findMany({
       where: { active: true },
       orderBy: { sortOrder: "asc" },
@@ -34,7 +39,28 @@ export default async function HomePage() {
       orderBy: { sortOrder: "asc" },
       take: 8,
     }),
+    db.order.count({ where: { status: { in: ["PAID", "PROCESSING", "COMPLETED"] } } }),
+    db.user.count({ where: { role: "CUSTOMER" } }),
+    db.product.count({ where: { active: true } }),
   ]);
+
+  // Below a small threshold, real order/customer counts read as embarrassing
+  // rather than reassuring — show durable capability claims instead until
+  // the shop has enough volume for the numbers to do their job.
+  const hasTraction = fulfilledOrders >= 10 && customerCount >= 10;
+  const stats = hasTraction
+    ? [
+        { icon: PackageCheck, value: fulfilledOrders, suffix: "+", label: "Orders fulfilled" },
+        { icon: Users, value: customerCount, suffix: "+", label: "Customers served" },
+        { icon: Smartphone, value: productCount, suffix: "", label: "Products live now" },
+        { icon: Timer, value: 10, suffix: "s", label: "Avg. top-up delivery" },
+      ]
+    : [
+        { icon: Smartphone, value: productCount, suffix: "", label: "Products live now" },
+        { icon: Layers, value: categories.length, suffix: "", label: "Categories to shop" },
+        { icon: Timer, value: 10, suffix: "s", label: "Avg. top-up delivery" },
+        { icon: Lock, value: 100, suffix: "%", label: "M-Pesa secured checkout" },
+      ];
 
   const bundleCategories = categories.filter((c) => c.instantTopup).slice(0, 3);
   const bundleSections = await Promise.all(
@@ -179,9 +205,26 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── Stats band (social proof) ────────────────────────────────────── */}
+      <section className="bg-brand-950 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 grid grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((s, i) => (
+            <Reveal key={s.label} delay={i * 90} className="text-center lg:text-left">
+              <div className="flex items-center justify-center lg:justify-start gap-2.5">
+                <s.icon className="w-5 h-5 text-brand-400" />
+                <div className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  <CountUp value={s.value} suffix={s.suffix} />
+                </div>
+              </div>
+              <div className="mt-1 text-[13px] text-white/60 font-medium">{s.label}</div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
       {/* ── Categories ────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-        <div className="flex items-end justify-between gap-4">
+        <Reveal className="flex items-end justify-between gap-4">
           <div>
             <div className="section-eyebrow">Categories</div>
             <h2 className="section-title mt-1">What can we get you today?</h2>
@@ -189,22 +232,23 @@ export default async function HomePage() {
           <Link href="/shop" className="btn btn-md btn-outline shrink-0">
             View all <ChevronRight className="w-4 h-4" />
           </Link>
-        </div>
+        </Reveal>
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/shop?cat=${cat.slug}`}
-              className="card card-hover p-5 flex flex-col items-center text-center gap-2.5"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center">
-                <CategoryIcon name={cat.icon} className="w-6 h-6 text-brand-600" />
-              </div>
-              <div className="font-bold text-sm text-ink">{cat.name}</div>
-              <div className="text-xs text-ink-mute">
-                {cat._count.products} product{cat._count.products === 1 ? "" : "s"}
-              </div>
-            </Link>
+          {categories.map((cat, i) => (
+            <Reveal key={cat.id} delay={i * 60}>
+              <Link
+                href={`/shop?cat=${cat.slug}`}
+                className="card card-hover p-5 flex flex-col items-center text-center gap-2.5 group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                  <CategoryIcon name={cat.icon} className="w-6 h-6 text-brand-600" />
+                </div>
+                <div className="font-bold text-sm text-ink">{cat.name}</div>
+                <div className="text-xs text-ink-mute">
+                  {cat._count.products} product{cat._count.products === 1 ? "" : "s"}
+                </div>
+              </Link>
+            </Reveal>
           ))}
         </div>
       </section>
@@ -213,7 +257,7 @@ export default async function HomePage() {
       {bundleSections.map(({ cat, products }) =>
         products.length > 0 ? (
           <section key={cat.id} className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-            <div className="flex items-end justify-between gap-4">
+            <Reveal className="flex items-end justify-between gap-4">
               <div>
                 <div className="section-eyebrow">{cat.name}</div>
                 <h2 className="section-title mt-1">
@@ -229,10 +273,12 @@ export default async function HomePage() {
               <Link href={`/shop?cat=${cat.slug}`} className="btn btn-md btn-outline shrink-0">
                 See all <ChevronRight className="w-4 h-4" />
               </Link>
-            </div>
+            </Reveal>
             <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-              {products.map((p) => (
-                <ProductCard key={p.id} product={toCardProduct(p)} />
+              {products.map((p, i) => (
+                <Reveal key={p.id} delay={i * 60}>
+                  <ProductCard product={toCardProduct(p)} />
+                </Reveal>
               ))}
             </div>
           </section>
@@ -242,7 +288,7 @@ export default async function HomePage() {
       {/* ── Featured phones ───────────────────────────────────────────────── */}
       {featured.length > 0 ? (
         <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-          <div className="flex items-end justify-between gap-4">
+          <Reveal className="flex items-end justify-between gap-4">
             <div>
               <div className="section-eyebrow">Devices</div>
               <h2 className="section-title mt-1">Featured phones</h2>
@@ -250,10 +296,12 @@ export default async function HomePage() {
             <Link href="/shop?cat=phones" className="btn btn-md btn-outline shrink-0">
               All phones <ChevronRight className="w-4 h-4" />
             </Link>
-          </div>
+          </Reveal>
           <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {featured.map((p) => (
-              <ProductCard key={p.id} product={toCardProduct(p)} />
+            {featured.map((p, i) => (
+              <Reveal key={p.id} delay={i * 60}>
+                <ProductCard product={toCardProduct(p)} />
+              </Reveal>
             ))}
           </div>
         </section>
@@ -261,8 +309,8 @@ export default async function HomePage() {
 
       {/* ── How it works ──────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-20">
-        <div className="rounded-3xl bg-gradient-to-br from-brand-900 to-brand-950 text-white px-6 sm:px-12 py-12 sm:py-16 relative overflow-hidden">
-          <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-brand-600/25 blur-3xl" aria-hidden="true" />
+        <Reveal className="rounded-3xl bg-gradient-to-br from-brand-900 to-brand-950 text-white px-6 sm:px-12 py-12 sm:py-16 relative overflow-hidden">
+          <div className="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-brand-600/25 blur-3xl animate-float" aria-hidden="true" />
           <div className="relative">
             <div className="text-brand-300 font-bold text-[13px] uppercase tracking-[0.14em]">
               How it works
@@ -290,10 +338,10 @@ export default async function HomePage() {
                   title: "Get it instantly",
                   text: "Bundles and airtime land on your line in seconds. Phones are delivered or ready for pickup.",
                 },
-              ].map((s) => (
-                <div key={s.step} className="relative">
+              ].map((s, i) => (
+                <Reveal key={s.step} delay={i * 120} className="relative group">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/15">
                       <s.icon className="w-5 h-5 text-brand-300" />
                     </div>
                     <span className="text-4xl font-extrabold text-white/15 absolute -top-4 right-1 select-none">
@@ -302,16 +350,16 @@ export default async function HomePage() {
                   </div>
                   <h3 className="mt-4 font-bold text-lg">{s.title}</h3>
                   <p className="mt-1.5 text-white/65 text-[15px] leading-relaxed">{s.text}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Support CTA ───────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-        <div className="card p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
+      <Reveal className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
+        <div className="card card-hover p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0">
               <Headset className="w-6 h-6 text-brand-600" />
@@ -330,7 +378,7 @@ export default async function HomePage() {
             Talk to support
           </Link>
         </div>
-      </section>
+      </Reveal>
 
       {/* Homepage structured data */}
       <script
