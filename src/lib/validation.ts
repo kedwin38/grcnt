@@ -156,8 +156,14 @@ export const mpesaSettingsSchema = z.object({
   consumerKey: z.string().trim().max(120).optional().or(z.literal("")),
   consumerSecret: z.string().trim().max(120).optional().or(z.literal("")),
   passkey: z.string().trim().max(200).optional().or(z.literal("")),
-  shortcode: z.string().trim().regex(/^\d{5,7}$/, "Shortcode/Till is 5–7 digits"),
+  shortcode: z.string().trim().regex(/^\d{5,7}$/, "Shortcode is 5–7 digits"),
   transactionType: z.enum(["CustomerBuyGoodsOnline", "CustomerPayBillOnline"]),
+  tillNumber: z
+    .string()
+    .trim()
+    .regex(/^\d{5,7}$/, "Till number is 5–7 digits")
+    .optional()
+    .or(z.literal("")),
   callbackBaseUrl: z
     .string()
     .trim()

@@ -100,9 +100,17 @@ volume's SQLite file with it while the app is stopped.
 3. On the deployed site: Admin → Settings → M-Pesa →
    - Environment: **Production**
    - Transaction type: **CustomerBuyGoodsOnline** (till) or CustomerPayBillOnline
-   - Shortcode = till/paybill number, paste key/secret/passkey
+   - **Paybill**: Shortcode = your paybill number, paste key/secret/passkey.
+   - **Till (Buy Goods)**: this needs **two different numbers** — per
+     Safaricom's own Daraja FAQ, Shortcode must be the **Store/HO number
+     issued at Go Live**, and the separate **Till Number** field must hold
+     the actual till number customers dial. Entering the till number in
+     both is the single most common cause of Daraja error 2002 ("Agent
+     number and Store number entered do not match") — STK Push silently
+     "succeeds" (`ResponseCode: 0`) but never reaches the phone.
    - Callback base URL = your site URL (pre-filled automatically)
-   - Save → **Check credentials** → optionally **Send KSh 1 test push**.
+   - Save → **Check credentials** → **Send KSh 1 test push** (waits ~10s and
+     confirms Daraja's actual result, not just that the request was accepted).
 4. Set `MPESA_SIMULATE=false` in the environment so real Daraja calls are made.
 
 Payments are reconciled three ways: Daraja callback → payment record; browser

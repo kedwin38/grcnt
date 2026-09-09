@@ -81,6 +81,21 @@ export async function stkPush(opts: {
   callbackUrl: string;
 }): Promise<StkPushResult> {
   const cfg = await getSettingGroup("mpesa");
+
+  // Buy Goods (Till) STK Push requires BusinessShortCode (the Store/HO number
+  // used at Go Live) and PartyB (the till number) to be two different values
+  // — per Safaricom's own Daraja FAQ. Sending the till number for both is the
+  // single most common cause of error 2002 ("Agent number and Store number
+  // entered do not match"). Paybill has no such split.
+  if (cfg.transactionType === "CustomerBuyGoodsOnline" && !cfg.tillNumber) {
+    throw new DarajaError(
+      "Till number is not configured. Add it under Admin → Settings → M-Pesa — Buy Goods requires the Business Shortcode (Store/HO number) and the Till Number as two separate values.",
+      "TILL_NOT_CONFIGURED"
+    );
+  }
+  const partyB =
+    cfg.transactionType === "CustomerBuyGoodsOnline" ? cfg.tillNumber : cfg.shortcode;
+
   const token = await getDarajaToken();
   const timestamp = darajaTimestamp();
   const password = Buffer.from(
@@ -94,7 +109,7 @@ export async function stkPush(opts: {
     TransactionType: cfg.transactionType,
     Amount: opts.amount,
     PartyA: opts.phone,
-    PartyB: cfg.shortcode,
+    PartyB: partyB,
     PhoneNumber: opts.phone,
     CallBackURL: opts.callbackUrl,
     AccountReference: opts.accountReference.slice(0, 12),

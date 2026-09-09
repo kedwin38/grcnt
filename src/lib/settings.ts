@@ -22,8 +22,19 @@ export type MpesaSettings = {
   consumerKey: string;
   consumerSecret: string;
   passkey: string;
+  // Business Shortcode: the Store/HO number used at Daraja Go Live. Used for
+  // BusinessShortCode and the STK password (Shortcode+Passkey+Timestamp) in
+  // every transaction type — including Buy Goods, where it is NOT the same
+  // as the till number (see tillNumber below).
   shortcode: string;
   transactionType: "CustomerBuyGoodsOnline" | "CustomerPayBillOnline";
+  // Buy Goods (Till) only: the actual till number, sent as PartyB. Per
+  // Safaricom's own Daraja docs, Buy Goods STK Push requires BusinessShortCode
+  // (the Store/HO number above) and PartyB (this till number) to be two
+  // different values — sending the till number for both is the single most
+  // common cause of Daraja error 2002 ("Agent number and Store number do not
+  // match"). Ignored for Paybill, where BusinessShortCode and PartyB match.
+  tillNumber: string;
   callbackBaseUrl: string; // empty = auto-detect from request
 };
 
@@ -83,6 +94,7 @@ export const DEFAULT_SETTINGS: AllSettings = {
     passkey: "",
     shortcode: "174379",
     transactionType: "CustomerBuyGoodsOnline",
+    tillNumber: "",
     callbackBaseUrl: "",
   },
   seo: {

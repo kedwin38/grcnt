@@ -93,12 +93,26 @@ export default async function AdminDashboard() {
   // never see the reason a payment can't start (that's admin-only detail) —
   // this is where the admin finds out instead.
   const mpesaFieldsMissing =
-    !mpesa.consumerKey || !mpesa.consumerSecret || !mpesa.passkey || !mpesa.shortcode;
+    !mpesa.consumerKey ||
+    !mpesa.consumerSecret ||
+    !mpesa.passkey ||
+    !mpesa.shortcode ||
+    (mpesa.transactionType === "CustomerBuyGoodsOnline" && !mpesa.tillNumber);
   const mpesaNotConfigured = !isSimulated() && mpesaFieldsMissing;
+  // Codes that mean "this admin's M-Pesa setup is wrong," as opposed to a
+  // normal customer-side decline (cancelled, timed out, insufficient funds).
+  // "2002" is Safaricom's own "Agent number and Store number entered do not
+  // match" — the classic Buy Goods shortcode/till mismatch.
+  const CONFIG_ERROR_CODES = new Set([
+    "NOT_CONFIGURED",
+    "BAD_CREDENTIALS",
+    "TILL_NOT_CONFIGURED",
+    "2002",
+  ]);
   const configFailures24h = recentPaymentFailures.filter((log) => {
     try {
       const code = log.details ? (JSON.parse(log.details) as { code?: string }).code : null;
-      return code === "NOT_CONFIGURED" || code === "BAD_CREDENTIALS";
+      return !!code && CONFIG_ERROR_CODES.has(code);
     } catch {
       return false;
     }
@@ -208,8 +222,8 @@ export default async function AdminDashboard() {
             </div>
             <div className="text-[13px] text-red-700 mt-0.5">
               {mpesaNotConfigured
-                ? "Add your Daraja consumer key, secret, passkey and shortcode under Settings → M-Pesa, then test the connection."
-                : "Your Daraja credentials are set but being rejected. Check them under Settings → M-Pesa and use “Check credentials” to confirm."}
+                ? "Add your Daraja consumer key, secret, passkey, shortcode (and till number, for Buy Goods) under Settings → M-Pesa, then test the connection."
+                : "Your M-Pesa setup is being rejected by Daraja — often a Buy Goods shortcode/till mismatch. Check Settings → M-Pesa and use “Send KSh 1 test push” to see the exact reason."}
             </div>
           </div>
         </Link>
