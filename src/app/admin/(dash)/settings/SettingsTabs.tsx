@@ -329,8 +329,9 @@ export function SettingsTabs({
             </div>
             <p className="text-[13px] text-ink-soft leading-relaxed">
               First checks your key &amp; secret with Safaricom. Optionally send a real
-              KSh 1 STK push and wait ~10s for Daraja to confirm what actually
-              happened — not just that the request was accepted.
+              KSh 1 STK push, enter your PIN on your phone when it arrives, and
+              wait up to ~20s for Daraja to confirm what actually happened —
+              not just that the request was accepted.
             </p>
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-md btn-outline" onClick={() => testDaraja(false)} disabled={testing}>

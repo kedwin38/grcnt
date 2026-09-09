@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { apiUser } from "@/lib/session";
-import { stkQuery, isSimulated } from "@/lib/daraja";
+import { stkQuery, isSimulated, DARAJA_TERMINAL_FAILURE_CODES } from "@/lib/daraja";
 import { newOrderCode } from "@/lib/codes";
 
 export const dynamic = "force-dynamic";
@@ -90,7 +90,11 @@ export async function GET(
         });
         return ok({ status: "SUCCESS", receipt, orderStatus: "PAID" });
       }
-      if (rc !== undefined && rc !== null) {
+      // Only finalise on a confirmed terminal code. Any other non-zero code
+      // (including ones we don't recognise) means Daraja hasn't concluded
+      // yet — keep polling rather than risk failing a payment that's about
+      // to succeed while the customer is still entering their PIN.
+      if (rc !== undefined && rc !== null && DARAJA_TERMINAL_FAILURE_CODES.has(String(rc))) {
         const cancelled = rc === "1032";
         await db.payment.update({
           where: { id: payment.id },
