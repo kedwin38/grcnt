@@ -173,6 +173,18 @@ export const seoSettingsSchema = z.object({
   keywords: z.string().trim().max(300),
 });
 
+export const backupSettingsSchema = z.object({
+  enabled: z.boolean(),
+  endpoint: z.string().trim().max(200).optional().or(z.literal("")),
+  region: z.string().trim().max(40).optional().or(z.literal("")),
+  bucket: z.string().trim().max(120).optional().or(z.literal("")),
+  accessKeyId: z.string().trim().max(200).optional().or(z.literal("")),
+  secretAccessKey: z.string().trim().max(200).optional().or(z.literal("")),
+  prefix: z.string().trim().max(120).optional().or(z.literal("")),
+  intervalHours: z.number().int().min(0).max(168),
+  retentionCount: z.number().int().min(0).max(365),
+});
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 import { ZodError } from "zod";

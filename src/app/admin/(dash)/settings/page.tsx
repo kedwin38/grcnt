@@ -37,6 +37,7 @@ export default async function AdminSettingsPage() {
           callbackBaseUrl: settings.mpesa.callbackBaseUrl || `${proto}://${host}`,
         }}
         initialSeo={settings.seo}
+        initialBackup={{ ...settings.backup, secretAccessKey: maskSecret(settings.backup.secretAccessKey) }}
         adminPhone={admin.phone}
         imageCount={imageCount}
       />

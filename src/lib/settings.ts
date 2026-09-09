@@ -33,10 +33,29 @@ export type SeoSettings = {
   keywords: string;
 };
 
+export type BackupSettings = {
+  enabled: boolean;
+  // S3-compatible object storage — works with AWS S3, Cloudflare R2,
+  // Backblaze B2, DigitalOcean Spaces, MinIO, etc. Leave endpoint empty
+  // for real AWS S3; set it for any other provider.
+  endpoint: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  prefix: string;
+  intervalHours: number; // 0 = manual backups only, no schedule
+  retentionCount: number; // 0 = keep every backup forever
+  lastRunAt: string; // ISO timestamp, "" = never run
+  lastRunOk: boolean;
+  lastRunMessage: string;
+};
+
 export type AllSettings = {
   business: BusinessSettings;
   mpesa: MpesaSettings;
   seo: SeoSettings;
+  backup: BackupSettings;
 };
 
 // ─── Defaults (editable in Admin → Settings) ─────────────────────────────────
@@ -73,6 +92,20 @@ export const DEFAULT_SETTINGS: AllSettings = {
     keywords:
       "Safaricom bundles, data bundles Kenya, cheap airtime, buy phones Kenya, M-Pesa shopping, Green Color Networks",
   },
+  backup: {
+    enabled: false,
+    endpoint: "",
+    region: "",
+    bucket: "",
+    accessKeyId: "",
+    secretAccessKey: "",
+    prefix: "gcn-backups",
+    intervalHours: 24,
+    retentionCount: 14,
+    lastRunAt: "",
+    lastRunOk: false,
+    lastRunMessage: "",
+  },
 };
 
 // Fields masked when displayed back in the admin UI (write-only inputs).
@@ -80,6 +113,7 @@ export const SENSITIVE_FIELDS: Record<keyof AllSettings, string[]> = {
   business: [],
   mpesa: ["consumerSecret", "passkey"],
   seo: [],
+  backup: ["secretAccessKey"],
 };
 
 // ─── Access helpers ──────────────────────────────────────────────────────────
@@ -99,12 +133,13 @@ export async function getSettingGroup<K extends keyof AllSettings>(
 }
 
 export async function getAllSettings(): Promise<AllSettings> {
-  const [business, mpesa, seo] = await Promise.all([
+  const [business, mpesa, seo, backup] = await Promise.all([
     getSettingGroup("business"),
     getSettingGroup("mpesa"),
     getSettingGroup("seo"),
+    getSettingGroup("backup"),
   ]);
-  return { business, mpesa, seo };
+  return { business, mpesa, seo, backup };
 }
 
 export async function saveSettingGroup<K extends keyof AllSettings>(

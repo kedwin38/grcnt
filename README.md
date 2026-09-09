@@ -59,10 +59,36 @@ auto-confirms with a `SIM…` receipt.
 - **Settings (admin only)** — business info (till number, contacts, hours,
   announcement bar), M-Pesa Daraja credentials (sandbox/production, till or
   paybill, consumer key/secret, passkey — encrypted at rest, masked on screen,
-  write-only) + “Check credentials” / “Send KSh 1 test push” buttons, SEO text.
+  write-only) + “Check credentials” / “Send KSh 1 test push” buttons, SEO text,
+  and off-site database backups (see below).
 
 Roles: **ADMIN** = everything; **STAFF** = orders, products, categories,
 customers, support (no settings/staff/audit). Every mutation is audit-logged.
+
+## Database backups (Admin → Settings → Backups)
+
+The whole database (orders, catalog, customers, settings) lives in one SQLite
+file, so backing it up is one thing: snapshot that file and ship it
+somewhere else. Configured entirely from the admin UI — no env vars, no
+redeploy:
+
+1. Get a bucket from any S3-compatible provider: AWS S3, Cloudflare R2,
+   Backblaze B2, DigitalOcean Spaces, or a self-hosted MinIO.
+2. Admin → Settings → Backups → fill in the endpoint (leave blank for real
+   AWS S3), region, bucket name, access key ID and secret access key.
+3. **Back up now** to confirm it actually works before trusting the schedule.
+4. Turn on **Enable scheduled backups** and set an interval (hours) and how
+   many recent backups to keep — older ones are pruned automatically.
+
+Each backup uses SQLite's `VACUUM INTO` to take a consistent snapshot even
+while the app keeps serving traffic, so it's safe to run at any time. The
+schedule is driven by the running web server itself (checked every 15
+minutes against the last recorded run) — no separate worker or cron service
+needed. Credentials are AES-256-GCM encrypted at rest, the same as Daraja
+credentials, and the secret key is write-only once saved.
+
+To restore, download the backup object from your bucket and replace the
+volume's SQLite file with it while the app is stopped.
 
 ## Going live with M-Pesa (Daraja)
 
