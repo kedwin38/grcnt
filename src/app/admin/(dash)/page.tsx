@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   Clock,
@@ -12,6 +13,8 @@ import {
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/session";
 import { formatDateTime, formatKES } from "@/lib/format";
+import { getSettingGroup } from "@/lib/settings";
+import { isSimulated } from "@/lib/daraja";
 import { RevenueBars, StatusDonut } from "@/components/admin/Charts";
 import { OrderStatusBadge } from "@/components/store/OrderStatus";
 
@@ -28,6 +31,8 @@ export default async function AdminDashboard() {
   const start30 = new Date(now.getTime() - 29 * 864e5);
   start30.setHours(0, 0, 0, 0);
 
+  const start24h = new Date(now.getTime() - 24 * 3600_000);
+
   const [
     todayRevenue,
     weekRevenue,
@@ -40,6 +45,8 @@ export default async function AdminDashboard() {
     statusCounts,
     topProductsRaw,
     dailyRevenueRaw,
+    mpesa,
+    recentPaymentFailures,
   ] = await Promise.all([
     db.order.aggregate({
       _sum: { total: true },
@@ -75,7 +82,27 @@ export default async function AdminDashboard() {
       where: { status: { in: [...PAID_STATUSES] }, createdAt: { gte: start30 } },
       select: { createdAt: true, total: true },
     }),
+    getSettingGroup("mpesa"),
+    db.auditLog.findMany({
+      where: { action: "payment.stk_failed", createdAt: { gte: start24h } },
+      select: { details: true },
+    }),
   ]);
+
+  // Proactive + reactive check: is M-Pesa actually usable right now? Customers
+  // never see the reason a payment can't start (that's admin-only detail) —
+  // this is where the admin finds out instead.
+  const mpesaFieldsMissing =
+    !mpesa.consumerKey || !mpesa.consumerSecret || !mpesa.passkey || !mpesa.shortcode;
+  const mpesaNotConfigured = !isSimulated() && mpesaFieldsMissing;
+  const configFailures24h = recentPaymentFailures.filter((log) => {
+    try {
+      const code = log.details ? (JSON.parse(log.details) as { code?: string }).code : null;
+      return code === "NOT_CONFIGURED" || code === "BAD_CREDENTIALS";
+    } catch {
+      return false;
+    }
+  }).length;
 
   // Build last-14-days revenue series
   const byDay = new Map<string, number>();
@@ -164,6 +191,29 @@ export default async function AdminDashboard() {
           </a>
         </div>
       </div>
+
+      {/* Payment-blocking alert — this can stop every sale, so it outranks
+          everything else on the dashboard. */}
+      {mpesaNotConfigured || configFailures24h > 0 ? (
+        <Link
+          href="/admin/settings"
+          className="flex items-start gap-3 rounded-2xl border-2 border-red-300 bg-red-50 px-5 py-4 hover:border-red-400 transition-colors"
+        >
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-extrabold text-red-800">
+              {mpesaNotConfigured
+                ? "M-Pesa isn't configured — customers can't pay"
+                : `M-Pesa payments are failing — ${configFailures24h} customer${configFailures24h > 1 ? "s" : ""} couldn't check out in the last 24 hours`}
+            </div>
+            <div className="text-[13px] text-red-700 mt-0.5">
+              {mpesaNotConfigured
+                ? "Add your Daraja consumer key, secret, passkey and shortcode under Settings → M-Pesa, then test the connection."
+                : "Your Daraja credentials are set but being rejected. Check them under Settings → M-Pesa and use “Check credentials” to confirm."}
+            </div>
+          </div>
+        </Link>
+      ) : null}
 
       {/* Alerts */}
       {(lowStock > 0 || newTickets > 0 || pendingPayment > 0) && (
