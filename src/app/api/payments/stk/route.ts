@@ -74,6 +74,10 @@ export async function POST(req: NextRequest) {
     return ok({ message: res.CustomerMessage || "M-Pesa prompt sent." });
   } catch (err) {
     if (err instanceof DarajaError) {
+      // Full detail (bad credentials, misconfigured till, raw Daraja response)
+      // is an admin/ops concern — logged and audited, never shown to the
+      // customer, who only needs to know payment isn't available right now.
+      console.error(`stk push failed for order ${order.code} [${err.code}]:`, err.message);
       await audit(
         { id: user.id, name: user.name },
         "payment.stk_failed",
@@ -81,7 +85,11 @@ export async function POST(req: NextRequest) {
         order.code,
         { error: err.message, code: err.code }
       );
-      return fail(err.message, 502);
+      return fail(
+        "We couldn't start the M-Pesa payment right now. Please try again in a moment, or contact support if this continues.",
+        502,
+        "PAYMENT_UNAVAILABLE"
+      );
     }
     console.error("stk push error:", err);
     return fail("Could not reach M-Pesa. Check your connection and try again.", 502);
