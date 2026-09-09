@@ -36,7 +36,12 @@ export async function POST(req: NextRequest) {
   }
   if (payment.status !== "PENDING") return ack; // idempotent — already finalised
 
-  await db.$transaction(async (tx) => {
+  // audit() writes via the shared global `db` handle, not `tx` — calling it
+  // from inside $transaction would have that write queue behind the very
+  // transaction that's awaiting it, deadlocking on SQLite's single-writer
+  // model. So the transaction only touches payment/order/product state and
+  // returns what to audit; the actual audit call happens after it commits.
+  const auditEvent = await db.$transaction(async (tx) => {
     if (resultCode === "0") {
       // Extract metadata items (Amount, MpesaReceiptNumber, TransactionDate, PhoneNumber)
       const items = (
@@ -82,34 +87,36 @@ export async function POST(req: NextRequest) {
             });
           }
         }
-        await audit(null, "payment.success", "order", payment.order.code, {
-          receipt,
-          amount,
-          phone: items.PhoneNumber,
-        });
-      } else {
-        await audit(null, "payment.amount_mismatch", "order", payment.order.code, {
-          paid: amount,
-          expected: payment.order.total,
-        });
+        return {
+          action: "payment.success",
+          details: { receipt, amount, phone: items.PhoneNumber },
+        };
       }
-    } else {
-      const cancelled = resultCode === "1032";
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: cancelled ? "CANCELLED" : "FAILED",
-          resultCode,
-          resultDesc,
-          rawCallback: JSON.stringify(body),
-        },
-      });
-      await audit(null, cancelled ? "payment.cancelled" : "payment.failed", "order", payment.order.code, {
+      return {
+        action: "payment.amount_mismatch",
+        details: { paid: amount, expected: payment.order.total },
+      };
+    }
+
+    const cancelled = resultCode === "1032";
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: cancelled ? "CANCELLED" : "FAILED",
         resultCode,
         resultDesc,
-      });
-    }
+        rawCallback: JSON.stringify(body),
+      },
+    });
+    return {
+      action: cancelled ? "payment.cancelled" : "payment.failed",
+      details: { resultCode, resultDesc },
+    };
   });
+
+  if (auditEvent) {
+    await audit(null, auditEvent.action, "order", payment.order.code, auditEvent.details);
+  }
 
   return ack;
 }

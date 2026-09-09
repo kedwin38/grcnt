@@ -6,6 +6,7 @@ data/
 prisma/*.sqlite
 prisma/*.sqlite-journal
 prisma/migrations/dev.db*
+tests/*.sqlite*
 .env
 .env.local
 .env.production
