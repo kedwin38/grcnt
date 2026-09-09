@@ -14,6 +14,21 @@ export class DarajaError extends Error {
   }
 }
 
+// STK Push Query can return a ResultCode that is neither "0" (success) nor a
+// confirmed terminal failure — Safaricom's own systems can report a
+// transaction as still mid-flight (customer hasn't finished entering their
+// PIN, or the query is simply asked before Daraja has concluded) using a
+// non-zero code that is NOT documented as a final failure. Treating every
+// non-zero code as failure risks marking a real, still-processing customer
+// payment as failed while the customer is legitimately completing it.
+// Only these codes are confirmed, final, "the transaction will not
+// complete" outcomes — everything else is treated as still pending:
+//   1    - insufficient funds
+//   1032 - request cancelled by the customer
+//   1037 - DS timeout, customer unreachable / did not respond in time
+//   2001 - wrong PIN / invalid initiator information
+export const DARAJA_TERMINAL_FAILURE_CODES = new Set(["1", "1032", "1037", "2001"]);
+
 function baseUrl(environment: "sandbox" | "production") {
   return environment === "production"
     ? "https://api.safaricom.co.ke"
