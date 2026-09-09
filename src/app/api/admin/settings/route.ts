@@ -6,6 +6,7 @@ import {
   businessSettingsSchema,
   mpesaSettingsSchema,
   seoSettingsSchema,
+  backupSettingsSchema,
   zodMessage,
 } from "@/lib/validation";
 import { saveSettingGroup, type AllSettings } from "@/lib/settings";
@@ -15,6 +16,7 @@ const SCHEMAS = {
   business: businessSettingsSchema,
   mpesa: mpesaSettingsSchema,
   seo: seoSettingsSchema,
+  backup: backupSettingsSchema,
 } as const;
 
 export async function POST(req: NextRequest) {
@@ -42,6 +44,9 @@ export async function POST(req: NextRequest) {
       }
     }
   }
+  if (group === "backup" && !patch.secretAccessKey) {
+    delete patch.secretAccessKey;
+  }
 
   await saveSettingGroup(group, patch as never);
   await audit({ id: user.id, name: user.name }, "settings.update", "settings", group, {
@@ -55,10 +60,11 @@ export async function GET() {
   const user = await apiUser();
   if (!user || user.role !== "ADMIN") return fail("Admin access required.", 403);
   const { getSettingGroup, maskSecret } = await import("@/lib/settings");
-  const [business, mpesa, seo] = await Promise.all([
+  const [business, mpesa, seo, backup] = await Promise.all([
     getSettingGroup("business"),
     getSettingGroup("mpesa"),
     getSettingGroup("seo"),
+    getSettingGroup("backup"),
   ]);
   const masked: AllSettings = {
     business,
@@ -69,6 +75,7 @@ export async function GET() {
       passkey: maskSecret(mpesa.passkey),
     },
     seo,
+    backup: { ...backup, secretAccessKey: maskSecret(backup.secretAccessKey) },
   };
   return ok(masked);
 }

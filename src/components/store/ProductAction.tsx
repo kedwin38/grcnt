@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { Minus, Plus, ShoppingCart, Zap } from "lucide-react";
 import { useCart } from "./CartProvider";
+import { useToast } from "./Toast";
+import { formatKES } from "@/lib/format";
 import type { CardProduct } from "./ProductCard";
 import { useRouter } from "next/navigation";
 
 export function ProductAction({ product }: { product: CardProduct }) {
   const { add } = useCart();
+  const toast = useToast();
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -62,6 +65,13 @@ export function ProductAction({ product }: { product: CardProduct }) {
         onClick={() => {
           add(item, qty);
           setAdded(true);
+          toast.show({
+            title: `${product.name} added to cart`,
+            description: `${qty} × ${formatKES(product.price)}`,
+            variant: "cart",
+            actionHref: "/cart",
+            actionLabel: "View cart",
+          });
           setTimeout(() => setAdded(false), 1400);
         }}
       >

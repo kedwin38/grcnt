@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { getAllSettings } from "@/lib/settings";
 
@@ -10,6 +10,16 @@ export const dynamic = "force-dynamic";
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
+  display: "swap",
+});
+
+// Display serif for marketing headlines only (hero, section titles) — paired
+// with Jakarta Sans for UI/body so the brand reads as designed, not templated.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  weight: ["600", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
@@ -39,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-KE" className={jakarta.variable}>
+    <html lang="en-KE" className={`${jakarta.variable} ${fraunces.variable}`}>
       <body>{children}</body>
     </html>
   );

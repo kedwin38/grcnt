@@ -26,12 +26,34 @@ export function Header({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [bump, setBump] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const prevCount = useRef(count);
 
   useEffect(() => {
     setMenuOpen(false);
     setAccountOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 8);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (count > prevCount.current) {
+      setBump(true);
+      const t = setTimeout(() => setBump(false), 400);
+      prevCount.current = count;
+      return () => clearTimeout(t);
+    }
+    prevCount.current = count;
+  }, [count]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -68,7 +90,11 @@ export function Header({
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-40 bg-surface/85 backdrop-blur-md border-b border-line">
+      <header
+        className={`sticky top-0 z-40 bg-surface/85 backdrop-blur-md border-b transition-shadow duration-300 ${
+          scrolled ? "border-line shadow-[0_4px_20px_-8px_rgba(18,64,18,0.15)]" : "border-line/60"
+        }`}
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -156,13 +182,17 @@ export function Header({
 
               <Link
                 href="/cart"
-                className="relative btn btn-sm btn-primary"
+                className={`relative btn btn-sm btn-primary transition-transform ${bump ? "scale-110" : ""}`}
                 aria-label={`Cart, ${count} items`}
               >
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingCart className={`w-4 h-4 ${bump ? "animate-bump" : ""}`} />
                 <span className="hidden sm:inline">Cart</span>
                 {count > 0 ? (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center">
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-brand-900 text-white text-[11px] font-bold flex items-center justify-center ${
+                      bump ? "animate-bump" : ""
+                    }`}
+                  >
                     {count}
                   </span>
                 ) : null}

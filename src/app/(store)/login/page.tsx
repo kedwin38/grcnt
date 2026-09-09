@@ -20,8 +20,8 @@ export default async function LoginPage({
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-14">
       <div className="grid lg:grid-cols-2 gap-10 items-center">
         <div className="hidden lg:block animate-fade-up">
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-            Welcome back to <span className="text-brand-600">green</span>.
+          <h1 className="hero-title text-3xl text-ink">
+            Welcome back to <span className="text-brand-600 italic">green</span>.
           </h1>
           <p className="text-ink-soft mt-3 leading-relaxed max-w-md">
             Log in to track your orders, repeat past purchases in one tap and reach

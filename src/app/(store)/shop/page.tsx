@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { toCardProduct } from "@/lib/catalog";
 import { ProductCard } from "@/components/store/ProductCard";
 import { CategoryIcon } from "@/components/store/categoryIcon";
+import { SortSelect } from "@/components/store/SortSelect";
 
 export const metadata: Metadata = {
   title: "Shop — data bundles, airtime, minutes & phones",
@@ -12,12 +13,20 @@ export const metadata: Metadata = {
     "Browse genuine Safaricom data bundles, airtime, minutes packages, phones and accessories. Pay with M-Pesa, get instant top-ups.",
 };
 
+const SORTS = {
+  featured: { label: "Featured", orderBy: [{ category: { sortOrder: "asc" as const } }, { sortOrder: "asc" as const }, { price: "asc" as const }] },
+  price_asc: { label: "Price: low to high", orderBy: [{ price: "asc" as const }] },
+  price_desc: { label: "Price: high to low", orderBy: [{ price: "desc" as const }] },
+  newest: { label: "Newest first", orderBy: [{ createdAt: "desc" as const }] },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export default async function ShopPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string; q?: string }>;
+  searchParams: Promise<{ cat?: string; q?: string; sort?: string }>;
 }) {
-  const { cat, q } = await searchParams;
+  const { cat, q, sort } = await searchParams;
 
   const categories = await db.category.findMany({
     where: { active: true },
@@ -26,6 +35,7 @@ export default async function ShopPage({
 
   const activeCat = cat ? categories.find((c) => c.slug === cat) : undefined;
   const search = (q || "").trim();
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "featured";
 
   const products = await db.product.findMany({
     where: {
@@ -41,7 +51,7 @@ export default async function ShopPage({
         : {}),
     },
     include: { category: true },
-    orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }, { price: "asc" }],
+    orderBy: [...SORTS[sortKey].orderBy],
     take: 60,
   });
 
@@ -105,6 +115,20 @@ export default async function ShopPage({
             {c.name}
           </Link>
         ))}
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <p className="text-[13px] text-ink-mute font-medium">
+          {products.length} product{products.length === 1 ? "" : "s"}
+        </p>
+        <div className="flex items-center gap-2">
+          <label htmlFor="sort" className="text-[13px] text-ink-mute font-medium hidden sm:inline">
+            Sort
+          </label>
+          <SortSelect
+            options={Object.entries(SORTS).map(([value, s]) => ({ value, label: s.label }))}
+          />
+        </div>
       </div>
 
       {products.length === 0 ? (

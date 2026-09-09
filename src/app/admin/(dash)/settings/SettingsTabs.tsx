@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, Plug, Save, ShieldAlert } from "lucide-react";
+import { CheckCircle2, DatabaseBackup, Loader2, Plug, Save, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/client";
-import type { BusinessSettings, MpesaSettings, SeoSettings } from "@/lib/settings";
+import type { BusinessSettings, MpesaSettings, SeoSettings, BackupSettings } from "@/lib/settings";
 
-type Tab = "business" | "mpesa" | "seo";
+type Tab = "business" | "mpesa" | "seo" | "backup";
 
 export function SettingsTabs({
   initialBusiness,
   initialMpesa,
   initialSeo,
+  initialBackup,
   adminPhone,
   imageCount,
 }: {
   initialBusiness: BusinessSettings;
   initialMpesa: MpesaSettings & { consumerSecret: string; passkey: string };
   initialSeo: SeoSettings;
+  initialBackup: BackupSettings;
   adminPhone: string;
   imageCount: number;
 }) {
@@ -28,16 +30,23 @@ export function SettingsTabs({
   const [business, setBusiness] = useState(initialBusiness);
   const [mpesa, setMpesa] = useState({ ...initialMpesa });
   const [seo, setSeo] = useState(initialSeo);
+  const [backup, setBackup] = useState({ ...initialBackup });
 
   const [testPhone, setTestPhone] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const [backupRunning, setBackupRunning] = useState(false);
+  const [backupResult, setBackupResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   function setB<K extends keyof BusinessSettings>(key: K, value: BusinessSettings[K]) {
     setBusiness((b) => ({ ...b, [key]: value }));
   }
   function setM<K extends keyof typeof mpesa>(key: K, value: (typeof mpesa)[K]) {
     setMpesa((m) => ({ ...m, [key]: value }));
+  }
+  function setBk<K extends keyof BackupSettings>(key: K, value: BackupSettings[K]) {
+    setBackup((b) => ({ ...b, [key]: value }));
   }
 
   async function save(group: Tab) {
@@ -50,17 +59,30 @@ export function SettingsTabs({
           ? business
           : group === "seo"
             ? seo
-            : {
-                environment: mpesa.environment,
-                consumerKey: mpesa.consumerKey,
-                // masked values ("••••abcd") are skipped server-side only when empty;
-                // detect mask and send empty so current secret is kept
-                consumerSecret: mpesa.consumerSecret.startsWith("•") ? "" : mpesa.consumerSecret,
-                passkey: mpesa.passkey.startsWith("•") ? "" : mpesa.passkey,
-                shortcode: mpesa.shortcode,
-                transactionType: mpesa.transactionType,
-                callbackBaseUrl: mpesa.callbackBaseUrl,
-              };
+            : group === "backup"
+              ? {
+                  enabled: backup.enabled,
+                  endpoint: backup.endpoint,
+                  region: backup.region,
+                  bucket: backup.bucket,
+                  accessKeyId: backup.accessKeyId,
+                  // masked value ("••••abcd") means "keep existing" — send empty
+                  secretAccessKey: backup.secretAccessKey.startsWith("•") ? "" : backup.secretAccessKey,
+                  prefix: backup.prefix,
+                  intervalHours: backup.intervalHours,
+                  retentionCount: backup.retentionCount,
+                }
+              : {
+                  environment: mpesa.environment,
+                  consumerKey: mpesa.consumerKey,
+                  // masked values ("••••abcd") are skipped server-side only when empty;
+                  // detect mask and send empty so current secret is kept
+                  consumerSecret: mpesa.consumerSecret.startsWith("•") ? "" : mpesa.consumerSecret,
+                  passkey: mpesa.passkey.startsWith("•") ? "" : mpesa.passkey,
+                  shortcode: mpesa.shortcode,
+                  transactionType: mpesa.transactionType,
+                  callbackBaseUrl: mpesa.callbackBaseUrl,
+                };
       await api("/api/admin/settings", { body: { group, patch } });
       setNotice("Saved — live on the site immediately.");
     } catch (err) {
@@ -88,10 +110,27 @@ export function SettingsTabs({
     }
   }
 
+  async function runBackupNow() {
+    setBackupResult(null);
+    setBackupRunning(true);
+    try {
+      const res = await api<{ message: string }>("/api/admin/settings/backup-now", { body: {} });
+      setBackupResult({ ok: true, message: res.message });
+    } catch (err) {
+      setBackupResult({
+        ok: false,
+        message: err instanceof Error ? err.message : "Backup failed.",
+      });
+    } finally {
+      setBackupRunning(false);
+    }
+  }
+
   const tabs: { key: Tab; label: string }[] = [
     { key: "business", label: "Business" },
     { key: "mpesa", label: "M-Pesa · Daraja" },
     { key: "seo", label: "SEO" },
+    { key: "backup", label: "Backups" },
   ];
 
   return (
@@ -304,6 +343,151 @@ export function SettingsTabs({
             <button className="btn btn-md btn-primary" onClick={() => save("seo")} disabled={busy}>
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save SEO
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "backup" ? (
+        <div className="card p-6 mt-4 space-y-4">
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-[13px] text-amber-800 leading-relaxed flex gap-2">
+            <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+            Automatic snapshots of the whole database, uploaded off-site so an
+            outage or a mistake here never means losing your orders and catalog.
+            Works with any S3-compatible storage — AWS S3, Cloudflare R2,
+            Backblaze B2, DigitalOcean Spaces. Credentials are encrypted before
+            they touch the database.
+          </div>
+
+          <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={backup.enabled}
+              onChange={(e) => setBk("enabled", e.target.checked)}
+              className="mt-0.5 w-5 h-5 accent-[#3aa335]"
+            />
+            <span>
+              <span className="block text-sm font-bold text-ink">Enable scheduled backups</span>
+              <span className="block text-[12px] text-ink-mute">
+                Runs automatically in the background at the interval below.
+              </span>
+            </span>
+          </label>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Endpoint URL (blank = AWS S3)</label>
+              <input
+                className="input"
+                value={backup.endpoint}
+                onChange={(e) => setBk("endpoint", e.target.value)}
+                placeholder="e.g. https://<account>.r2.cloudflarestorage.com"
+              />
+            </div>
+            <div>
+              <label className="label">Region</label>
+              <input
+                className="input"
+                value={backup.region}
+                onChange={(e) => setBk("region", e.target.value)}
+                placeholder="us-east-1, or “auto” for R2"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Bucket name</label>
+            <input className="input" value={backup.bucket} onChange={(e) => setBk("bucket", e.target.value)} placeholder="gcn-backups" />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Access key ID</label>
+              <input className="input" value={backup.accessKeyId} onChange={(e) => setBk("accessKeyId", e.target.value)} autoComplete="off" />
+            </div>
+            <div>
+              <label className="label">Secret access key (write-only)</label>
+              <input
+                className="input"
+                type="password"
+                value={backup.secretAccessKey}
+                onChange={(e) => setBk("secretAccessKey", e.target.value)}
+                placeholder="Leave as-is to keep current"
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <label className="label">Folder / prefix</label>
+              <input className="input" value={backup.prefix} onChange={(e) => setBk("prefix", e.target.value)} placeholder="gcn-backups" />
+            </div>
+            <div>
+              <label className="label">Every (hours)</label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                max={168}
+                value={backup.intervalHours}
+                onChange={(e) => setBk("intervalHours", Math.max(0, parseInt(e.target.value || "0", 10)))}
+              />
+              <p className="field-hint">0 = manual backups only</p>
+            </div>
+            <div>
+              <label className="label">Keep last</label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                max={365}
+                value={backup.retentionCount}
+                onChange={(e) => setBk("retentionCount", Math.max(0, parseInt(e.target.value || "0", 10)))}
+              />
+              <p className="field-hint">0 = keep every backup</p>
+            </div>
+          </div>
+
+          {backup.lastRunAt ? (
+            <p className="field-hint">
+              Last backup: {new Date(backup.lastRunAt).toLocaleString("en-KE")} —{" "}
+              <span className={backup.lastRunOk ? "text-brand-700 font-semibold" : "text-red-600 font-semibold"}>
+                {backup.lastRunOk ? "succeeded" : "failed"}
+              </span>{" "}
+              — {backup.lastRunMessage}
+            </p>
+          ) : (
+            <p className="field-hint">No backup has run yet.</p>
+          )}
+
+          <div className="flex justify-end">
+            <button className="btn btn-md btn-primary" onClick={() => save("backup")} disabled={busy}>
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save backup settings
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-line bg-paper p-4 space-y-3">
+            <div className="flex items-center gap-2 font-extrabold text-ink">
+              <DatabaseBackup className="w-4.5 h-4.5 text-brand-600" /> Run a backup now
+            </div>
+            <p className="text-[13px] text-ink-soft leading-relaxed">
+              Save your settings above first, then use this to confirm the bucket
+              and credentials actually work before relying on the schedule.
+            </p>
+            <button className="btn btn-md btn-outline" onClick={runBackupNow} disabled={backupRunning}>
+              {backupRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <DatabaseBackup className="w-4 h-4" />} Back up now
+            </button>
+            {backupResult ? (
+              <div
+                className={`rounded-xl px-3.5 py-3 text-[13px] font-medium border ${
+                  backupResult.ok
+                    ? "bg-brand-50 border-brand-200 text-brand-800"
+                    : "bg-red-50 border-red-200 text-red-700"
+                }`}
+              >
+                {backupResult.message}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
