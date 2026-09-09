@@ -81,6 +81,7 @@ export function SettingsTabs({
                   passkey: mpesa.passkey.startsWith("•") ? "" : mpesa.passkey,
                   shortcode: mpesa.shortcode,
                   transactionType: mpesa.transactionType,
+                  tillNumber: mpesa.tillNumber,
                   callbackBaseUrl: mpesa.callbackBaseUrl,
                 };
       await api("/api/admin/settings", { body: { group, patch } });
@@ -237,6 +238,17 @@ export function SettingsTabs({
             M-Pesa For Business app.
           </div>
 
+          {mpesa.transactionType === "CustomerBuyGoodsOnline" ? (
+            <div className="rounded-xl bg-sky-50 border border-sky-200 px-4 py-3 text-[13px] text-sky-800 leading-relaxed flex gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              Buy Goods needs <strong>two different numbers</strong>, per Safaricom&apos;s own
+              Daraja docs: the <strong>Business Shortcode</strong> below (the Store/HO
+              number issued at Go Live) and the <strong>Till Number</strong> further down.
+              Entering the till number in both is the most common cause of Daraja
+              error 2002 (&ldquo;Agent number and Store number do not match&rdquo;).
+            </div>
+          ) : null}
+
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Environment</label>
@@ -256,8 +268,15 @@ export function SettingsTabs({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Shortcode / Till number</label>
+              <label className="label">
+                {mpesa.transactionType === "CustomerBuyGoodsOnline"
+                  ? "Business Shortcode (Store/HO number)"
+                  : "Shortcode (Paybill number)"}
+              </label>
               <input className="input" value={mpesa.shortcode} onChange={(e) => setM("shortcode", e.target.value)} placeholder="e.g. 174379" inputMode="numeric" />
+              {mpesa.transactionType === "CustomerBuyGoodsOnline" ? (
+                <p className="field-hint">The Store/HO shortcode you were issued at Go Live — not the till number.</p>
+              ) : null}
             </div>
             <div>
               <label className="label">Callback base URL</label>
@@ -265,6 +284,23 @@ export function SettingsTabs({
               <p className="field-hint">Where Daraja sends payment confirmations. The suggested value is pre-filled.</p>
             </div>
           </div>
+
+          {mpesa.transactionType === "CustomerBuyGoodsOnline" ? (
+            <div>
+              <label className="label">Till number</label>
+              <input
+                className="input"
+                value={mpesa.tillNumber}
+                onChange={(e) => setM("tillNumber", e.target.value)}
+                placeholder="e.g. 3547433"
+                inputMode="numeric"
+              />
+              <p className="field-hint">
+                The actual till number customers see when paying at the counter — sent
+                as PartyB. Must be different from the Business Shortcode above.
+              </p>
+            </div>
+          ) : null}
 
           <div>
             <label className="label">Consumer key</label>

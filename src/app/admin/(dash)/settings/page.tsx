@@ -34,6 +34,7 @@ export default async function AdminSettingsPage() {
           passkey: maskSecret(settings.mpesa.passkey),
           shortcode: settings.mpesa.shortcode,
           transactionType: settings.mpesa.transactionType,
+          tillNumber: settings.mpesa.tillNumber,
           callbackBaseUrl: settings.mpesa.callbackBaseUrl || `${proto}://${host}`,
         }}
         initialSeo={settings.seo}
