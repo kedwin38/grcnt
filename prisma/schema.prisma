@@ -47,6 +47,7 @@ model Category {
   requiresImage  Boolean  @default(false)
   tracksStock    Boolean  @default(false)
   instantTopup   Boolean  @default(true) // fulfilled as airtime/data top-up
+  requiresRouterNumber Boolean @default(false) // fulfilled by loading a package onto a router
   fields         String   @default("[]") // JSON array of field definitions
   sortOrder      Int      @default(0)
   active         Boolean  @default(true)
@@ -99,6 +100,7 @@ enum OrderStatus {
 
 enum Fulfilment {
   INSTANT_TOPUP
+  ROUTER_TOPUP
   PICKUP
   DELIVERY
 }
@@ -113,6 +115,7 @@ model Order {
   fulfilment    Fulfilment  @default(INSTANT_TOPUP)
   address       String?
   topupPhone    String? // Safaricom line to receive bundles/airtime
+  routerNumber  String? // Router serial/number to load a WiFi package onto
   notes         String?
   subtotal      Int
   total         Int

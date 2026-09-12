@@ -138,6 +138,12 @@ export default async function AdminOrderDetail({
                 <span className="font-bold text-ink">{prettyPhone(order.topupPhone)}</span>
               </div>
             ) : null}
+            {order.routerNumber ? (
+              <div className="flex items-center justify-between">
+                <span className="text-ink-soft">Router number</span>
+                <span className="font-bold text-ink">{order.routerNumber}</span>
+              </div>
+            ) : null}
             {order.address ? (
               <div>
                 <span className="text-ink-soft block mb-1">Delivery address</span>

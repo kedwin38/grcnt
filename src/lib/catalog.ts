@@ -68,5 +68,6 @@ export function toCardProduct(product: ProductWithCategory): CardProduct {
     badge: badgeValue(product),
     stock: product.stock,
     instant: product.category.instantTopup,
+    requiresRouterNumber: product.category.requiresRouterNumber,
   };
 }

@@ -42,11 +42,19 @@ export const cartItemSchema = z.object({
   qty: z.number().int().min(1).max(20),
 });
 
+export const routerNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9-]{4,40}$/, "Enter a valid router number")
+  .optional()
+  .or(z.literal(""));
+
 export const orderCreateSchema = z
   .object({
     items: z.array(cartItemSchema).min(1, "Your cart is empty").max(20),
-    fulfilment: z.enum(["INSTANT_TOPUP", "PICKUP", "DELIVERY"]),
+    fulfilment: z.enum(["INSTANT_TOPUP", "ROUTER_TOPUP", "PICKUP", "DELIVERY"]),
     topupPhone: phoneSchema.optional(),
+    routerNumber: routerNumberSchema,
     address: z.string().trim().max(300).optional().or(z.literal("")),
     notes: z.string().trim().max(500).optional().or(z.literal("")),
   })
@@ -57,6 +65,10 @@ export const orderCreateSchema = z
   .refine(
     (v) => v.fulfilment !== "INSTANT_TOPUP" || !!v.topupPhone,
     { message: "Enter the Safaricom number to top up", path: ["topupPhone"] }
+  )
+  .refine(
+    (v) => v.fulfilment !== "ROUTER_TOPUP" || !!v.routerNumber,
+    { message: "Enter the router number to load", path: ["routerNumber"] }
   );
 
 export const stkSchema = z.object({
@@ -105,6 +117,7 @@ export const categorySchema = z.object({
   requiresImage: z.boolean().default(false),
   tracksStock: z.boolean().default(false),
   instantTopup: z.boolean().default(true),
+  requiresRouterNumber: z.boolean().default(false),
   fields: z.array(fieldDefSchema).max(12).default([]),
   sortOrder: z.number().int().min(0).max(999).default(0),
   active: z.boolean().default(true),

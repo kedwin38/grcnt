@@ -50,14 +50,25 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const hasInstant = lines.some((l) => l.product.category.instantTopup);
-  const hasPhysical = lines.some((l) => !l.product.category.instantTopup);
+  const hasRouter = lines.some((l) => l.product.category.requiresRouterNumber);
+  const hasInstant = lines.some(
+    (l) => l.product.category.instantTopup && !l.product.category.requiresRouterNumber
+  );
+  const hasPhysical = lines.some(
+    (l) => !l.product.category.instantTopup && !l.product.category.requiresRouterNumber
+  );
 
-  if (hasPhysical && input.fulfilment === "INSTANT_TOPUP") {
+  if (hasPhysical && (input.fulfilment === "INSTANT_TOPUP" || input.fulfilment === "ROUTER_TOPUP")) {
     return fail("Devices can't be topped up — choose delivery or pickup.", 422);
+  }
+  if (hasRouter && input.fulfilment !== "ROUTER_TOPUP") {
+    return fail("Router packages must use router top-up fulfilment.", 422);
   }
   if (hasInstant && !input.topupPhone) {
     return fail("Enter the Safaricom number that should receive the top-up.", 422);
+  }
+  if (hasRouter && !input.routerNumber) {
+    return fail("Enter the router number to load the package onto.", 422);
   }
 
   const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
@@ -72,6 +83,7 @@ export async function POST(req: NextRequest) {
       fulfilment: input.fulfilment,
       address: input.fulfilment === "DELIVERY" ? input.address || null : null,
       topupPhone: hasInstant ? input.topupPhone : null,
+      routerNumber: hasRouter ? input.routerNumber : null,
       notes: input.notes || null,
       subtotal,
       total: subtotal,

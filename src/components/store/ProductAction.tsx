@@ -24,6 +24,7 @@ export function ProductAction({ product }: { product: CardProduct }) {
     imageId: product.imageId ?? null,
     categoryName: product.categoryName,
     instant: product.instant ?? true,
+    requiresRouterNumber: product.requiresRouterNumber ?? false,
   };
 
   if (soldOut) {

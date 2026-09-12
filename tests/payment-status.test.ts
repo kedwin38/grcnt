@@ -36,7 +36,7 @@ describe("GET /api/payments/status/[code] — never assumes, never drops trackin
     expect(stkQuery).not.toHaveBeenCalled();
   });
 
-  it("resolves a simulated (demo mode) payment to SUCCESS after its delay, and decrements stock", async () => {
+  it("auto-completes a simulated (demo mode) instant top-up payment after its delay, and decrements stock", async () => {
     const { order, user, product } = await makePendingOrderWithPayment({
       qty: 3,
       stock: 10,
@@ -49,13 +49,13 @@ describe("GET /api/payments/status/[code] — never assumes, never drops trackin
     const body = await res.json();
 
     expect(body.data.status).toBe("SUCCESS");
-    expect(body.data.orderStatus).toBe("PAID");
+    expect(body.data.orderStatus).toBe("COMPLETED");
     const updatedProduct = await db.product.findUniqueOrThrow({ where: { id: product.id } });
     expect(updatedProduct.stock).toBe(7); // 10 - qty(3)
     expect(stkQuery).not.toHaveBeenCalled(); // simulated path never touches Daraja
   });
 
-  it("marks PAID and decrements stock when the fallback query confirms success", async () => {
+  it("auto-completes an instant top-up order and decrements stock when the fallback query confirms success", async () => {
     const { order, user, product } = await makePendingOrderWithPayment({
       qty: 1,
       stock: 5,
@@ -73,9 +73,29 @@ describe("GET /api/payments/status/[code] — never assumes, never drops trackin
     const body = await res.json();
 
     expect(body.data.status).toBe("SUCCESS");
-    expect(body.data.orderStatus).toBe("PAID");
+    expect(body.data.orderStatus).toBe("COMPLETED");
     const updatedProduct = await db.product.findUniqueOrThrow({ where: { id: product.id } });
     expect(updatedProduct.stock).toBe(4);
+  });
+
+  it("only marks PAID (still needs staff action) for a non-instant fulfilment order via the fallback query", async () => {
+    const { order, user } = await makePendingOrderWithPayment({
+      fulfilment: "ROUTER_TOPUP",
+      paymentCreatedAt: new Date(Date.now() - 20_000),
+    });
+    vi.mocked(apiUser).mockResolvedValue(user as never);
+    vi.mocked(stkQuery).mockResolvedValue({
+      ResponseCode: "0",
+      ResultCode: "0",
+      ResultDesc: "The service request is processed successfully.",
+      CheckoutRequestID: "x",
+    });
+
+    const res = await statusRequest(order.code);
+    const body = await res.json();
+
+    expect(body.data.status).toBe("SUCCESS");
+    expect(body.data.orderStatus).toBe("PAID");
   });
 
   it("marks CANCELLED on a confirmed terminal cancellation code (1032)", async () => {

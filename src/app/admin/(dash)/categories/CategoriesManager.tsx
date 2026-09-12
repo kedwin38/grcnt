@@ -23,6 +23,7 @@ export type CategoryRow = {
   requiresImage: boolean;
   tracksStock: boolean;
   instantTopup: boolean;
+  requiresRouterNumber: boolean;
   fields: FieldRow[];
   sortOrder: number;
   active: boolean;
@@ -42,6 +43,7 @@ const emptyCategory: Omit<CategoryRow, "id" | "productCount"> = {
   requiresImage: false,
   tracksStock: false,
   instantTopup: true,
+  requiresRouterNumber: false,
   fields: [],
   sortOrder: 0,
   active: true,
@@ -130,6 +132,7 @@ export function CategoriesManager({ initial }: { initial: CategoryRow[] }) {
               )}
               {cat.tracksStock ? <span className="badge badge-blue">Tracks stock</span> : null}
               {cat.instantTopup ? <span className="badge badge-green">Instant top-up</span> : null}
+              {cat.requiresRouterNumber ? <span className="badge badge-blue">Needs router number</span> : null}
               {cat.fields.map((f) => (
                 <span key={f.key} className="badge badge-gray">
                   {f.label}
@@ -171,6 +174,7 @@ function CategoryEditor({
   const [requiresImage, setRequiresImage] = useState(value.requiresImage);
   const [tracksStock, setTracksStock] = useState(value.tracksStock);
   const [instantTopup, setInstantTopup] = useState(value.instantTopup);
+  const [requiresRouterNumber, setRequiresRouterNumber] = useState(value.requiresRouterNumber);
   const [sortOrder, setSortOrder] = useState(String(value.sortOrder));
   const [active, setActive] = useState(value.active);
   const [fields, setFields] = useState<FieldRow[]>(value.fields.map((f) => ({ ...f })));
@@ -193,6 +197,7 @@ function CategoryEditor({
         requiresImage,
         tracksStock,
         instantTopup,
+        requiresRouterNumber,
         sortOrder: Math.max(0, parseInt(sortOrder || "0", 10) || 0),
         active,
         fields: fields.map((f) => ({
@@ -287,10 +292,33 @@ function CategoryEditor({
               </span>
             </label>
             <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3.5 cursor-pointer">
-              <input type="checkbox" checked={instantTopup} onChange={(e) => setInstantTopup(e.target.checked)} className="mt-0.5 w-5 h-5 accent-[#3aa335]" />
+              <input
+                type="checkbox"
+                checked={instantTopup}
+                onChange={(e) => {
+                  setInstantTopup(e.target.checked);
+                  if (e.target.checked) setRequiresRouterNumber(false);
+                }}
+                className="mt-0.5 w-5 h-5 accent-[#3aa335]"
+              />
               <span>
                 <span className="block text-sm font-bold text-ink">Fulfilled as top-up</span>
-                <span className="block text-[12px] text-ink-mute">Delivered to a phone number after payment</span>
+                <span className="block text-[12px] text-ink-mute">Delivered to a phone number automatically after payment — no admin action needed</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requiresRouterNumber}
+                onChange={(e) => {
+                  setRequiresRouterNumber(e.target.checked);
+                  if (e.target.checked) setInstantTopup(false);
+                }}
+                className="mt-0.5 w-5 h-5 accent-[#3aa335]"
+              />
+              <span>
+                <span className="block text-sm font-bold text-ink">Needs a router number</span>
+                <span className="block text-[12px] text-ink-mute">e.g. WiFi/5G router packages — customer enters their router number at checkout, staff load it manually</span>
               </span>
             </label>
             <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3.5 cursor-pointer">

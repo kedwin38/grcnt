@@ -21,6 +21,7 @@ export type CardProduct = {
   badge?: string | null; // primary attribute value e.g. "30 GB"
   stock?: number | null;
   instant?: boolean;
+  requiresRouterNumber?: boolean;
 };
 
 export function ProductCard({ product }: { product: CardProduct }) {
@@ -38,6 +39,7 @@ export function ProductCard({ product }: { product: CardProduct }) {
     imageId: product.imageId ?? null,
     categoryName: product.categoryName,
     instant: product.instant ?? true,
+    requiresRouterNumber: product.requiresRouterNumber ?? false,
   };
 
   function handleAdd() {
@@ -156,6 +158,7 @@ export function BuyNowButton({ product }: { product: CardProduct }) {
           imageId: product.imageId ?? null,
           categoryName: product.categoryName,
           instant: product.instant ?? true,
+          requiresRouterNumber: product.requiresRouterNumber ?? false,
         });
         router.push("/checkout");
       }}

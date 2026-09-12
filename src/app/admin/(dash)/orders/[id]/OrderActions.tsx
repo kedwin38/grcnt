@@ -13,6 +13,15 @@ type Status =
   | "CANCELLED"
   | "REFUNDED";
 
+const TOPUP_REF_LABEL: Record<string, string> = {
+  INSTANT_TOPUP: "Safaricom top-up transaction ref (optional)",
+  ROUTER_TOPUP: "Router load confirmation ref (optional)",
+};
+const TOPUP_REF_PLACEHOLDER: Record<string, string> = {
+  INSTANT_TOPUP: "e.g. QGH7X52KPZ",
+  ROUTER_TOPUP: "e.g. Loaded 30GB — confirmed",
+};
+
 export function OrderActions({
   orderId,
   status,
@@ -69,15 +78,13 @@ export function OrderActions({
       {status === "PAID" || status === "PROCESSING" ? (
         <div className="space-y-2.5 rounded-2xl border border-line p-4 bg-paper">
           <label className="label mb-0">
-            {fulfilment === "INSTANT_TOPUP"
-              ? "Safaricom top-up transaction ref (optional)"
-              : "Dispatch / collection ref (optional)"}
+            {TOPUP_REF_LABEL[fulfilment] || "Dispatch / collection ref (optional)"}
           </label>
           <input
             className="input"
             value={ref}
             onChange={(e) => setRef(e.target.value)}
-            placeholder={fulfilment === "INSTANT_TOPUP" ? "e.g. QGH7X52KPZ" : "e.g. Dispatched with rider – Sam"}
+            placeholder={TOPUP_REF_PLACEHOLDER[fulfilment] || "e.g. Dispatched with rider – Sam"}
           />
           <button
             className="btn btn-lg bg-brand-700 text-white hover:bg-brand-800 w-full"

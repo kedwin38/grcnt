@@ -17,6 +17,7 @@ export type CartItem = {
   imageId?: number | null;
   categoryName: string;
   instant: boolean;
+  requiresRouterNumber: boolean;
   qty: number;
 };
 

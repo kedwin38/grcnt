@@ -29,6 +29,7 @@ export default async function AdminCategoriesPage() {
           requiresImage: c.requiresImage,
           tracksStock: c.tracksStock,
           instantTopup: c.instantTopup,
+          requiresRouterNumber: c.requiresRouterNumber,
           fields: parseFields(c).map((f) => ({
             key: f.key,
             label: f.label,

@@ -48,6 +48,7 @@ export async function GET(
   // Simulated demo payment resolves after a short delay.
   if (payment.simulated && ageMs > 6000) {
     const receipt = `SIM${newOrderCode().slice(4, 10)}`;
+    const autoCompleted = order.fulfilment === "INSTANT_TOPUP";
     await db.$transaction(async (tx) => {
       await tx.payment.update({
         where: { id: payment.id },
@@ -55,7 +56,7 @@ export async function GET(
       });
       await tx.order.update({
         where: { id: order.id },
-        data: { status: "PAID" },
+        data: { status: autoCompleted ? "COMPLETED" : "PAID" },
       });
       for (const item of await tx.orderItem.findMany({ where: { orderId: order.id }, include: { product: { include: { category: true } } } })) {
         if (item.product && item.product.category.tracksStock && item.product.stock !== null) {
@@ -66,7 +67,7 @@ export async function GET(
         }
       }
     });
-    return ok({ status: "SUCCESS", receipt, orderStatus: "PAID" });
+    return ok({ status: "SUCCESS", receipt, orderStatus: autoCompleted ? "COMPLETED" : "PAID" });
   }
 
   // Safety net: query Daraja directly when the callback is late.
@@ -76,19 +77,20 @@ export async function GET(
       const rc = result.ResultCode ?? result.ResponseCode;
       if (rc === "0") {
         const receipt = extractReceiptQuery(result);
+        const autoCompleted = order.fulfilment === "INSTANT_TOPUP";
         await db.$transaction(async (tx) => {
           await tx.payment.update({
             where: { id: payment.id },
             data: { status: "SUCCESS", resultCode: rc, resultDesc: result.ResultDesc, mpesaReceipt: receipt },
           });
-          await tx.order.update({ where: { id: order.id }, data: { status: "PAID" } });
+          await tx.order.update({ where: { id: order.id }, data: { status: autoCompleted ? "COMPLETED" : "PAID" } });
           for (const item of await tx.orderItem.findMany({ where: { orderId: order.id }, include: { product: { include: { category: true } } } })) {
             if (item.product && item.product.category.tracksStock && item.product.stock !== null) {
               await tx.product.update({ where: { id: item.product.id }, data: { stock: { decrement: item.qty } } });
             }
           }
         });
-        return ok({ status: "SUCCESS", receipt, orderStatus: "PAID" });
+        return ok({ status: "SUCCESS", receipt, orderStatus: autoCompleted ? "COMPLETED" : "PAID" });
       }
       // Only finalise on a confirmed terminal code. Any other non-zero code
       // (including ones we don't recognise) means Daraja hasn't concluded
