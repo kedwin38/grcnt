@@ -47,7 +47,7 @@ function failureCallback(checkoutRequestId: string, resultCode: number, resultDe
 }
 
 describe("POST /api/mpesa/callback — finalising a transaction", () => {
-  it("marks the order PAID and decrements stock on a genuine success callback", async () => {
+  it("auto-completes an instant top-up order (no admin step) and decrements stock on a genuine success callback", async () => {
     const { order, payment, product } = await makePendingOrderWithPayment({ qty: 2, stock: 10 });
 
     const res = await mpesaCallback(
@@ -59,10 +59,22 @@ describe("POST /api/mpesa/callback — finalising a transaction", () => {
     const updatedPayment = await db.payment.findUniqueOrThrow({ where: { id: payment.id } });
     const updatedProduct = await db.product.findUniqueOrThrow({ where: { id: product.id } });
 
-    expect(updatedOrder.status).toBe("PAID");
+    expect(updatedOrder.status).toBe("COMPLETED");
     expect(updatedPayment.status).toBe("SUCCESS");
     expect(updatedPayment.mpesaReceipt).toBe("NLJ7RT61SV");
     expect(updatedProduct.stock).toBe(8); // 10 - qty(2)
+  });
+
+  it("only marks PAID (still needs staff action) for a non-instant fulfilment order", async () => {
+    const { order, payment } = await makePendingOrderWithPayment({ fulfilment: "ROUTER_TOPUP" });
+
+    const res = await mpesaCallback(
+      callbackRequest(successCallback(payment.checkoutRequestId!, payment.amount, payment.phone))
+    );
+    expect(res.status).toBe(200);
+
+    const updatedOrder = await db.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(updatedOrder.status).toBe("PAID");
   });
 
   it("never marks the order paid on an amount mismatch, and never touches stock", async () => {
@@ -134,7 +146,7 @@ describe("POST /api/mpesa/callback — finalising a transaction", () => {
 
     const updatedOrder = await db.order.findUniqueOrThrow({ where: { id: order.id } });
     const updatedProduct = await db.product.findUniqueOrThrow({ where: { id: product.id } });
-    expect(updatedOrder.status).toBe("PAID");
+    expect(updatedOrder.status).toBe("COMPLETED");
     expect(updatedProduct.stock).toBe(8); // decremented once, not twice
   });
 });

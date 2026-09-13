@@ -136,34 +136,73 @@ async function seedCatalog() {
     return;
   }
   for (const cat of CATEGORIES) {
-    const { products, ...categoryData } = cat;
-    const created = await db.category.create({
-      data: { ...categoryData, fields: JSON.stringify(categoryData.fields) },
-    });
-    let i = 0;
-    for (const p of products) {
-      i += 1;
-      await db.product.create({
-        data: {
-          categoryId: created.id,
-          name: p.name,
-          slug: `${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50)}-${i}${created.id}`,
-          price: p.price,
-          compareAtPrice: p.compareAtPrice || null,
-          attributes: JSON.stringify(p.attrs || {}),
-          stock: cat.tracksStock ? (p.stock ?? 0) : null,
-          featured: !!p.featured,
-          sortOrder: p.sortOrder,
-        },
-      });
-    }
-    console.log(`✓ category seeded: ${cat.name} (${products.length} products)`);
+    await createCategoryWithProducts(cat);
   }
+}
+
+async function createCategoryWithProducts(cat) {
+  const { products, ...categoryData } = cat;
+  const created = await db.category.create({
+    data: { ...categoryData, fields: JSON.stringify(categoryData.fields) },
+  });
+  let i = 0;
+  for (const p of products) {
+    i += 1;
+    await db.product.create({
+      data: {
+        categoryId: created.id,
+        name: p.name,
+        slug: `${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50)}-${i}${created.id}`,
+        price: p.price,
+        compareAtPrice: p.compareAtPrice || null,
+        attributes: JSON.stringify(p.attrs || {}),
+        stock: cat.tracksStock ? (p.stock ?? 0) : null,
+        featured: !!p.featured,
+        sortOrder: p.sortOrder,
+      },
+    });
+  }
+  console.log(`✓ category seeded: ${cat.name} (${products.length} products)`);
+}
+
+// Introduced after the initial catalog seed above already ran in production,
+// so it's gated on its own slug (not categoryCount) — this is the pattern to
+// follow for adding any further one-off category on top of an existing shop.
+const WIFI_CATEGORY = {
+  name: "WiFi Packages",
+  slug: "wifi-packages",
+  icon: "wifi",
+  description: "5G router data packages — loaded directly onto your router.",
+  requiresImage: false,
+  tracksStock: false,
+  instantTopup: false,
+  requiresRouterNumber: true,
+  sortOrder: 6,
+  fields: [
+    { key: "size_gb", label: "Size", type: "number", unit: "GB", badge: true },
+    { key: "validity", label: "Validity", type: "select", options: ["7 days", "30 days"] },
+  ],
+  products: [
+    { name: "20 GB Router Package", price: 1000, sortOrder: 1, attrs: { size_gb: 20, validity: "30 days" } },
+    { name: "50 GB Router Package", price: 2000, sortOrder: 2, attrs: { size_gb: 50, validity: "30 days" } },
+    { name: "Unlimited Router Package", price: 3500, sortOrder: 3, attrs: { size_gb: "Unlimited", validity: "30 days" } },
+  ],
+};
+
+async function seedWifiCategory() {
+  const existing = await db.category.findUnique({ where: { slug: WIFI_CATEGORY.slug } });
+  if (existing) {
+    console.log(`• category exists: ${WIFI_CATEGORY.name}`);
+    return;
+  }
+  await createCategoryWithProducts(WIFI_CATEGORY);
+  console.log(`  ⚠ sample prices — edit them from Admin → Categories/Products`);
 }
 
 async function main() {
   await seedAdmin();
   await seedCatalog();
+  await seedWifiCategory();
 }
 
 main()

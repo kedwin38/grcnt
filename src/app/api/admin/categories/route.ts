@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       requiresImage: input.requiresImage,
       tracksStock: input.tracksStock,
       instantTopup: input.instantTopup,
+      requiresRouterNumber: input.requiresRouterNumber,
       fields: JSON.stringify(input.fields),
       sortOrder: input.sortOrder,
       active: input.active,

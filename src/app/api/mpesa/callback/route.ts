@@ -71,9 +71,14 @@ export async function POST(req: NextRequest) {
       });
 
       if (amountOk) {
+        // Instant top-ups (airtime/bundles) are dispatched automatically —
+        // no staff step actually happens for them, so the order is done the
+        // moment payment clears. Everything else (router loads, pickup,
+        // delivery) still needs a human to act, so it stays PAID.
+        const autoCompleted = payment.order.fulfilment === "INSTANT_TOPUP";
         await tx.order.update({
           where: { id: payment.orderId },
-          data: { status: "PAID" },
+          data: { status: autoCompleted ? "COMPLETED" : "PAID" },
         });
         for (const item of payment.order.items) {
           if (
@@ -88,7 +93,7 @@ export async function POST(req: NextRequest) {
           }
         }
         return {
-          action: "payment.success",
+          action: autoCompleted ? "payment.success_auto_completed" : "payment.success",
           details: { receipt, amount, phone: items.PhoneNumber },
         };
       }

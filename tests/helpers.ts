@@ -27,6 +27,7 @@ export async function makePendingOrderWithPayment(opts: {
   checkoutRequestId?: string;
   simulated?: boolean;
   paymentCreatedAt?: Date;
+  fulfilment?: "INSTANT_TOPUP" | "ROUTER_TOPUP" | "PICKUP" | "DELIVERY";
 } = {}) {
   const qty = opts.qty ?? 2;
   const unitPrice = opts.unitPrice ?? 50;
@@ -66,6 +67,7 @@ export async function makePendingOrderWithPayment(opts: {
       customerName: user.name,
       customerPhone: user.phone,
       status: "PENDING_PAYMENT",
+      fulfilment: opts.fulfilment ?? "INSTANT_TOPUP",
       subtotal: total,
       total,
       topupPhone: user.phone,

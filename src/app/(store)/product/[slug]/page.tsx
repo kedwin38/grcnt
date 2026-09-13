@@ -63,6 +63,7 @@ export default async function ProductPage({
     categoryIcon: product.category.icon,
     stock: product.stock,
     instant: product.category.instantTopup,
+    requiresRouterNumber: product.category.requiresRouterNumber,
   };
 
   return (
@@ -158,7 +159,9 @@ export default async function ProductPage({
                 <Check className="w-4 h-4" />
                 {product.stock !== null
                   ? `${product.stock} in stock — order today`
-                  : "Available — delivered instantly after payment"}
+                  : product.category.requiresRouterNumber
+                    ? "Available — loaded onto your router after payment"
+                    : "Available — delivered instantly after payment"}
               </span>
             )}
           </div>
@@ -177,10 +180,14 @@ export default async function ProductPage({
                 icon: Timer,
                 title: product.category.instantTopup
                   ? "Instant top-up delivery"
-                  : "Fast, insured delivery",
+                  : product.category.requiresRouterNumber
+                    ? "Loaded onto your router"
+                    : "Fast, insured delivery",
                 text: product.category.instantTopup
                   ? "Top-ups land on your line seconds after payment."
-                  : "Carefully packed. Delivery or pickup — your choice at checkout.",
+                  : product.category.requiresRouterNumber
+                    ? "Enter your router number at checkout — our team loads the package onto it shortly after payment."
+                    : "Carefully packed. Delivery or pickup — your choice at checkout.",
               },
               {
                 icon: PackageCheck,

@@ -128,9 +128,11 @@ export default async function AdminOrdersPage({
                     <td className="td text-[13px]">
                       {o.fulfilment === "INSTANT_TOPUP"
                         ? "⚡ Top-up"
-                        : o.fulfilment === "DELIVERY"
-                          ? "🚚 Delivery"
-                          : "🏪 Pickup"}
+                        : o.fulfilment === "ROUTER_TOPUP"
+                          ? "📶 Router"
+                          : o.fulfilment === "DELIVERY"
+                            ? "🚚 Delivery"
+                            : "🏪 Pickup"}
                     </td>
                     <td className="td"><OrderStatusBadge status={o.status} /></td>
                     <td className="td text-[13px]">{formatDateTime(o.createdAt)}</td>

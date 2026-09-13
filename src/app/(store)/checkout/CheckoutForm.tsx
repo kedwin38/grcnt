@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Loader2, MapPin, Store, Smartphone, Zap } from "lucide-react";
+import { AlertCircle, Loader2, MapPin, Router, Store, Smartphone, Zap } from "lucide-react";
 import { useCart } from "@/components/store/CartProvider";
 import { formatKES, prettyPhone } from "@/lib/format";
 import { api } from "@/lib/client";
 
-type Fulfilment = "INSTANT_TOPUP" | "PICKUP" | "DELIVERY";
+type Fulfilment = "INSTANT_TOPUP" | "ROUTER_TOPUP" | "PICKUP" | "DELIVERY";
 
 export function CheckoutForm({
   defaultName,
@@ -19,13 +19,23 @@ export function CheckoutForm({
 }) {
   const { items, subtotal, clear } = useCart();
   const router = useRouter();
-  const hasPhysical = useMemo(() => items.some((i) => !i.instant), [items]);
-  const hasInstant = useMemo(() => items.some((i) => i.instant), [items]);
+  const hasRouter = useMemo(() => items.some((i) => i.requiresRouterNumber), [items]);
+  const hasPhysical = useMemo(() => items.some((i) => !i.instant && !i.requiresRouterNumber), [items]);
+  const hasInstant = useMemo(() => items.some((i) => i.instant && !i.requiresRouterNumber), [items]);
 
-  const [fulfilment, setFulfilment] = useState<Fulfilment>(
-    hasPhysical ? "DELIVERY" : "INSTANT_TOPUP"
-  );
+  const [fulfilment, setFulfilment] = useState<Fulfilment>("INSTANT_TOPUP");
+  // The cart hydrates from localStorage a tick after mount, so `items` (and
+  // therefore hasPhysical/hasRouter) is still empty on the very first render
+  // — pick the real default once real cart contents are known, but only
+  // once, so it doesn't stomp on a manual Delivery/Pickup toggle later.
+  const fulfilmentReady = useRef(false);
+  useEffect(() => {
+    if (fulfilmentReady.current || items.length === 0) return;
+    fulfilmentReady.current = true;
+    setFulfilment(hasPhysical ? "DELIVERY" : hasRouter ? "ROUTER_TOPUP" : "INSTANT_TOPUP");
+  }, [items.length, hasPhysical, hasRouter]);
   const [topupPhone, setTopupPhone] = useState(prettyPhone(defaultPhone));
+  const [routerNumber, setRouterNumber] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,6 +50,7 @@ export function CheckoutForm({
           items: items.map((i) => ({ productId: i.productId, qty: i.qty })),
           fulfilment,
           topupPhone: hasInstant ? topupPhone : undefined,
+          routerNumber: hasRouter ? routerNumber : undefined,
           address: fulfilment === "DELIVERY" ? address : "",
           notes,
         },
@@ -88,6 +99,28 @@ export function CheckoutForm({
                   <div className="font-bold text-ink">Instant top-up</div>
                   <div className="text-[13px] text-ink-soft">
                     Bundles and airtime delivered to your Safaricom line seconds after payment.
+                  </div>
+                </div>
+              </button>
+            ) : null}
+
+            {hasRouter && !hasPhysical ? (
+              <button
+                type="button"
+                onClick={() => setFulfilment("ROUTER_TOPUP")}
+                className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-all ${
+                  fulfilment === "ROUTER_TOPUP"
+                    ? "border-brand-500 bg-brand-50/60"
+                    : "border-line hover:border-brand-300"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center shrink-0">
+                  <Router className="w-5 h-5 text-brand-700" />
+                </div>
+                <div>
+                  <div className="font-bold text-ink">Router package</div>
+                  <div className="text-[13px] text-ink-soft">
+                    Loaded onto your router by our team shortly after payment.
                   </div>
                 </div>
               </button>
@@ -154,6 +187,25 @@ export function CheckoutForm({
               placeholder="e.g. 0712 345 678"
               inputMode="tel"
               autoComplete="tel"
+            />
+          </section>
+        ) : null}
+
+        {hasRouter ? (
+          <section className="card p-6">
+            <h2 className="font-extrabold text-ink flex items-center gap-2">
+              <Router className="w-5 h-5 text-brand-600" />
+              Router number
+            </h2>
+            <p className="text-[13px] text-ink-soft mt-1">
+              The serial/router number the package should be loaded onto. You&apos;ll find this printed on the router or in its settings.
+            </p>
+            <input
+              className="input mt-3 max-w-xs"
+              value={routerNumber}
+              onChange={(e) => setRouterNumber(e.target.value)}
+              placeholder="e.g. RTR-4471928"
+              autoComplete="off"
             />
           </section>
         ) : null}

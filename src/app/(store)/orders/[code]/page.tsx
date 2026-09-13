@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, MapPin, Smartphone, Store, Zap } from "lucide-react";
+import { CheckCircle2, MapPin, Router, Smartphone, Store, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/session";
 import { formatKES, prettyPhone } from "@/lib/format";
@@ -48,7 +48,9 @@ export default async function OrderDetailPage({
             Payment for <span className="font-bold text-ink">{order.code}</span> received
             {order.fulfilment === "INSTANT_TOPUP"
               ? " — your top-up is landing on your line in moments."
-              : " — we're preparing your order right away."}
+              : order.fulfilment === "ROUTER_TOPUP"
+                ? " — we're loading your package onto your router shortly."
+                : " — we're preparing your order right away."}
           </p>
         </div>
       ) : null}
@@ -118,6 +120,10 @@ export default async function OrderDetailPage({
                   <>
                     <Zap className="w-4 h-4 text-brand-600" /> Instant top-up
                   </>
+                ) : order.fulfilment === "ROUTER_TOPUP" ? (
+                  <>
+                    <Router className="w-4 h-4 text-brand-600" /> Router package
+                  </>
                 ) : order.fulfilment === "DELIVERY" ? (
                   <>
                     <MapPin className="w-4 h-4 text-brand-600" /> Delivery
@@ -131,6 +137,11 @@ export default async function OrderDetailPage({
               {order.topupPhone ? (
                 <div className="text-[13px] text-ink-soft mt-1 flex items-center gap-1.5">
                   <Smartphone className="w-3.5 h-3.5" /> To {prettyPhone(order.topupPhone)}
+                </div>
+              ) : null}
+              {order.routerNumber ? (
+                <div className="text-[13px] text-ink-soft mt-1 flex items-center gap-1.5">
+                  <Router className="w-3.5 h-3.5" /> Router {order.routerNumber}
                 </div>
               ) : null}
               {order.address ? (
