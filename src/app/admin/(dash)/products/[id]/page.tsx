@@ -66,6 +66,7 @@ export default async function EditProductPage({
           lowStockAt: String(product.lowStockAt),
           active: product.active,
           featured: product.featured,
+          hotSale: product.hotSale,
           sortOrder: String(product.sortOrder),
         }}
       />

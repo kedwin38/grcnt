@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, ChevronRight, PackageCheck, ShieldCheck, Timer, Truck } from "lucide-react";
+import { Check, ChevronRight, Flame, PackageCheck, ShieldCheck, Timer, Truck } from "lucide-react";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { formatKES } from "@/lib/format";
@@ -64,6 +64,7 @@ export default async function ProductPage({
     stock: product.stock,
     instant: product.category.instantTopup,
     requiresRouterNumber: product.category.requiresRouterNumber,
+    hotSale: product.hotSale,
   };
 
   return (
@@ -109,12 +110,19 @@ export default async function ProductPage({
 
         {/* Purchase panel */}
         <div>
-          <Link
-            href={`/shop?cat=${product.category.slug}`}
-            className="text-brand-600 font-bold text-[13px] uppercase tracking-wider"
-          >
-            {product.category.name}
-          </Link>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Link
+              href={`/shop?cat=${product.category.slug}`}
+              className="text-brand-600 font-bold text-[13px] uppercase tracking-wider"
+            >
+              {product.category.name}
+            </Link>
+            {product.hotSale ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold uppercase tracking-wide px-2.5 py-1">
+                <Flame className="w-3 h-3" /> Hot Sale
+              </span>
+            ) : null}
+          </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-ink mt-1.5">{product.name}</h1>
 
           <div className="mt-4 flex items-baseline gap-3">
@@ -186,7 +194,7 @@ export default async function ProductPage({
                 text: product.category.instantTopup
                   ? "Top-ups land on your line seconds after payment."
                   : product.category.requiresRouterNumber
-                    ? "Enter your router number at checkout — our team loads the package onto it shortly after payment."
+                    ? "Enter your router's SIM number at checkout — our team loads the package onto it shortly after payment."
                     : "Carefully packed. Delivery or pickup — your choice at checkout.",
               },
               {

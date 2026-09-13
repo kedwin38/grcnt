@@ -118,7 +118,10 @@ export default async function AdminProductsPage({
                             <Link href={`/admin/products/${p.id}`} className="font-bold text-ink hover:text-brand-700 line-clamp-1">
                               {p.name}
                             </Link>
-                            {p.featured ? <span className="badge badge-amber mt-0.5">Featured</span> : null}
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {p.featured ? <span className="badge badge-amber">Featured</span> : null}
+                              {p.hotSale ? <span className="badge badge-red">🔥 Hot Sale</span> : null}
+                            </div>
                           </div>
                         </div>
                       </td>

@@ -69,5 +69,6 @@ export function toCardProduct(product: ProductWithCategory): CardProduct {
     stock: product.stock,
     instant: product.category.instantTopup,
     requiresRouterNumber: product.category.requiresRouterNumber,
+    hotSale: product.hotSale,
   };
 }

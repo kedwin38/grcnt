@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Check, KeyRound, Loader2, UserRound } from "lucide-react";
 import { api } from "@/lib/client";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export function ProfileForm({ name, email }: { name: string; email: string }) {
   const [profileName, setProfileName] = useState(name);
@@ -86,15 +87,15 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
         </h2>
         <div>
           <label htmlFor="cpw" className="label">Current password</label>
-          <input id="cpw" type="password" className="input" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" required />
+          <PasswordInput id="cpw" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" required />
         </div>
         <div>
           <label htmlFor="npw" className="label">New password</label>
-          <input id="npw" type="password" className="input" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+          <PasswordInput id="npw" value={newPassword} onChange={setNewPassword} autoComplete="new-password" minLength={8} required />
         </div>
         <div>
           <label htmlFor="cnpw" className="label">Confirm new password</label>
-          <input id="cnpw" type="password" className="input" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+          <PasswordInput id="cnpw" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" minLength={8} required />
         </div>
         {pwError ? <p className="field-error">{pwError}</p> : null}
         {pwSaved ? (

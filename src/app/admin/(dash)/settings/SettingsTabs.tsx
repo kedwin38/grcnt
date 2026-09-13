@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, DatabaseBackup, Loader2, Plug, Save, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/client";
+import { PasswordInput } from "@/components/PasswordInput";
 import type { BusinessSettings, MpesaSettings, SeoSettings, BackupSettings } from "@/lib/settings";
 
 type Tab = "business" | "mpesa" | "seo" | "backup";
@@ -309,11 +310,11 @@ export function SettingsTabs({
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Consumer secret (write-only)</label>
-              <input className="input" type="password" value={mpesa.consumerSecret} onChange={(e) => setM("consumerSecret", e.target.value)} placeholder="Leave as-is to keep current" autoComplete="new-password" />
+              <PasswordInput value={mpesa.consumerSecret} onChange={(v) => setM("consumerSecret", v)} placeholder="Leave as-is to keep current" autoComplete="new-password" />
             </div>
             <div>
               <label className="label">Passkey (write-only)</label>
-              <input className="input" type="password" value={mpesa.passkey} onChange={(e) => setM("passkey", e.target.value)} placeholder="Leave as-is to keep current" autoComplete="new-password" />
+              <PasswordInput value={mpesa.passkey} onChange={(v) => setM("passkey", v)} placeholder="Leave as-is to keep current" autoComplete="new-password" />
             </div>
           </div>
 
@@ -444,11 +445,9 @@ export function SettingsTabs({
             </div>
             <div>
               <label className="label">Secret access key (write-only)</label>
-              <input
-                className="input"
-                type="password"
+              <PasswordInput
                 value={backup.secretAccessKey}
-                onChange={(e) => setBk("secretAccessKey", e.target.value)}
+                onChange={(v) => setBk("secretAccessKey", v)}
                 placeholder="Leave as-is to keep current"
                 autoComplete="new-password"
               />

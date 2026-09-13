@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ImagePlus, Loader2, Save, Star, Trash2, X } from "lucide-react";
+import { AlertCircle, Flame, ImagePlus, Loader2, Save, Star, Trash2, X } from "lucide-react";
 import { api } from "@/lib/client";
 
 export type AdminCategory = {
@@ -28,6 +28,7 @@ export type ProductFormValues = {
   lowStockAt: string;
   active: boolean;
   featured: boolean;
+  hotSale: boolean;
   sortOrder: string;
 };
 
@@ -54,6 +55,7 @@ export function ProductForm({
   const [lowStockAt, setLowStockAt] = useState(initial?.lowStockAt ?? "3");
   const [active, setActive] = useState(initial?.active ?? true);
   const [featured, setFeatured] = useState(initial?.featured ?? false);
+  const [hotSale, setHotSale] = useState(initial?.hotSale ?? false);
   const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? "0");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,6 +107,7 @@ export function ProductForm({
         lowStockAt: Math.max(0, parseInt(lowStockAt || "3", 10) || 0),
         active,
         featured,
+        hotSale,
         sortOrder: Math.max(0, parseInt(sortOrder || "0", 10) || 0),
       };
       if (!body.name || !body.price) throw new Error("Name and price are required.");
@@ -281,6 +284,19 @@ export function ProductForm({
             </span>
             <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="w-5 h-5 accent-[#3aa335]" />
           </label>
+          <label className="flex items-center justify-between rounded-xl border border-line px-4 py-3 cursor-pointer">
+            <span className="text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-red-500" /> Hot Sale badge
+            </span>
+            <input type="checkbox" checked={hotSale} onChange={(e) => setHotSale(e.target.checked)} className="w-5 h-5 accent-[#3aa335]" />
+          </label>
+          {compareAtPrice && Number(compareAtPrice) > Number(price || 0) ? (
+            <p className="field-hint">
+              &ldquo;Save&rdquo; badge will show automatically — customers save{" "}
+              KSh {Math.round(Number(compareAtPrice) - Number(price || 0)).toLocaleString("en-KE")}{" "}
+              vs. the was-price above.
+            </p>
+          ) : null}
         </div>
 
         {error ? (

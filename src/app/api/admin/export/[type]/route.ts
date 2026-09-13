@@ -31,7 +31,7 @@ export async function GET(
       take: 5000,
     });
     csv = toCsv([
-      ["Code", "Date", "Customer", "Phone", "Status", "Fulfilment", "TopUpPhone", "RouterNumber", "Address", "Items", "Total (KES)", "TopupRef"],
+      ["Code", "Date", "Customer", "Phone", "Status", "Fulfilment", "TopUpPhone", "RouterSimNumber", "Address", "Items", "Total (KES)", "TopupRef"],
       ...orders.map((o) => [
         o.code,
         formatDateTime(o.createdAt),

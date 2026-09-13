@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, UserPlus } from "lucide-react";
 import { api } from "@/lib/client";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export function RegisterForm({ next }: { next: string }) {
   const router = useRouter();
@@ -61,12 +62,10 @@ export function RegisterForm({ next }: { next: string }) {
       </div>
       <div>
         <label htmlFor="password" className="label">Password</label>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
-          className="input"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
           placeholder="At least 8 characters"
           autoComplete="new-password"
           minLength={8}
@@ -75,12 +74,10 @@ export function RegisterForm({ next }: { next: string }) {
       </div>
       <div>
         <label htmlFor="confirm" className="label">Confirm password</label>
-        <input
+        <PasswordInput
           id="confirm"
-          type="password"
-          className="input"
           value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
+          onChange={setConfirm}
           placeholder="Repeat your password"
           autoComplete="new-password"
           minLength={8}

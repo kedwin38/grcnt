@@ -48,6 +48,7 @@ model Category {
   tracksStock    Boolean  @default(false)
   instantTopup   Boolean  @default(true) // fulfilled as airtime/data top-up
   requiresRouterNumber Boolean @default(false) // fulfilled by loading a package onto a router
+  showOnHome     Boolean  @default(false) // featured with its own section on the homepage
   fields         String   @default("[]") // JSON array of field definitions
   sortOrder      Int      @default(0)
   active         Boolean  @default(true)
@@ -71,6 +72,7 @@ model Product {
   lowStockAt     Int      @default(3)
   active         Boolean  @default(true)
   featured       Boolean  @default(false)
+  hotSale        Boolean  @default(false) // shows a "Hot Sale" badge on the storefront
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -115,7 +117,7 @@ model Order {
   fulfilment    Fulfilment  @default(INSTANT_TOPUP)
   address       String?
   topupPhone    String? // Safaricom line to receive bundles/airtime
-  routerNumber  String? // Router serial/number to load a WiFi package onto
+  routerNumber  String? // Phone number of the SIM inside the router, to load a WiFi package onto
   notes         String?
   subtotal      Int
   total         Int

@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       tracksStock: input.tracksStock,
       instantTopup: input.instantTopup,
       requiresRouterNumber: input.requiresRouterNumber,
+      showOnHome: input.showOnHome,
       fields: JSON.stringify(input.fields),
       sortOrder: input.sortOrder,
       active: input.active,

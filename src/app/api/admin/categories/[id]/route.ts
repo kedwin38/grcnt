@@ -40,6 +40,7 @@ export async function PATCH(
   if (input.tracksStock !== undefined) data.tracksStock = input.tracksStock;
   if (input.instantTopup !== undefined) data.instantTopup = input.instantTopup;
   if (input.requiresRouterNumber !== undefined) data.requiresRouterNumber = input.requiresRouterNumber;
+  if (input.showOnHome !== undefined) data.showOnHome = input.showOnHome;
   if (input.fields !== undefined) data.fields = JSON.stringify(input.fields);
   if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
   if (input.active !== undefined) data.active = input.active;
