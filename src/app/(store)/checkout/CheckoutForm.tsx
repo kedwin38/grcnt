@@ -195,17 +195,18 @@ export function CheckoutForm({
           <section className="card p-6">
             <h2 className="font-extrabold text-ink flex items-center gap-2">
               <Router className="w-5 h-5 text-brand-600" />
-              Router number
+              Router SIM number
             </h2>
             <p className="text-[13px] text-ink-soft mt-1">
-              The serial/router number the package should be loaded onto. You&apos;ll find this printed on the router or in its settings.
+              The phone number of the SIM card inside the router — that&apos;s what the package gets loaded onto.
             </p>
             <input
               className="input mt-3 max-w-xs"
               value={routerNumber}
               onChange={(e) => setRouterNumber(e.target.value)}
-              placeholder="e.g. RTR-4471928"
-              autoComplete="off"
+              placeholder="e.g. 0712 345 678"
+              inputMode="tel"
+              autoComplete="tel"
             />
           </section>
         ) : null}

@@ -30,6 +30,7 @@ export default async function AdminCategoriesPage() {
           tracksStock: c.tracksStock,
           instantTopup: c.instantTopup,
           requiresRouterNumber: c.requiresRouterNumber,
+          showOnHome: c.showOnHome,
           fields: parseFields(c).map((f) => ({
             key: f.key,
             label: f.label,

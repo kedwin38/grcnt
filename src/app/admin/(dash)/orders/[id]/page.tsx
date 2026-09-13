@@ -140,8 +140,10 @@ export default async function AdminOrderDetail({
             ) : null}
             {order.routerNumber ? (
               <div className="flex items-center justify-between">
-                <span className="text-ink-soft">Router number</span>
-                <span className="font-bold text-ink">{order.routerNumber}</span>
+                <span className="text-ink-soft">Router SIM number</span>
+                <a href={`tel:+${order.routerNumber}`} className="font-bold text-ink hover:text-brand-700">
+                  {prettyPhone(order.routerNumber)}
+                </a>
               </div>
             ) : null}
             {order.address ? (

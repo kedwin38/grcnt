@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       lowStockAt: input.lowStockAt,
       active: input.active,
       featured: input.featured,
+      hotSale: input.hotSale,
       sortOrder: input.sortOrder,
     },
   });

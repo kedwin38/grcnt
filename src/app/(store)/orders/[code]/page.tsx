@@ -141,7 +141,7 @@ export default async function OrderDetailPage({
               ) : null}
               {order.routerNumber ? (
                 <div className="text-[13px] text-ink-soft mt-1 flex items-center gap-1.5">
-                  <Router className="w-3.5 h-3.5" /> Router {order.routerNumber}
+                  <Router className="w-3.5 h-3.5" /> Router SIM {prettyPhone(order.routerNumber)}
                 </div>
               ) : null}
               {order.address ? (

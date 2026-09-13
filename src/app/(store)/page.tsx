@@ -62,7 +62,7 @@ export default async function HomePage() {
         { icon: Lock, value: 100, suffix: "%", label: "M-Pesa secured checkout" },
       ];
 
-  const bundleCategories = categories.filter((c) => c.instantTopup).slice(0, 3);
+  const bundleCategories = categories.filter((c) => c.showOnHome).slice(0, 4);
   const bundleSections = await Promise.all(
     bundleCategories.map(async (cat) => ({
       cat,
@@ -267,7 +267,9 @@ export default async function HomePage() {
                       ? "Talk more, pay less"
                       : cat.slug.includes("airtime")
                         ? "Top up in a tap"
-                        : cat.name}
+                        : cat.slug.includes("wifi") || cat.slug.includes("router")
+                          ? "Router packages, sorted"
+                          : cat.name}
                 </h2>
               </div>
               <Link href={`/shop?cat=${cat.slug}`} className="btn btn-md btn-outline shrink-0">

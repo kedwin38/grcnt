@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, ShoppingCart } from "lucide-react";
+import { Check, Flame, ShoppingCart } from "lucide-react";
 import { useCart } from "./CartProvider";
 import { useToast } from "./Toast";
 import { formatKES } from "@/lib/format";
@@ -22,6 +22,7 @@ export type CardProduct = {
   stock?: number | null;
   instant?: boolean;
   requiresRouterNumber?: boolean;
+  hotSale?: boolean;
 };
 
 export function ProductCard({ product }: { product: CardProduct }) {
@@ -30,6 +31,10 @@ export function ProductCard({ product }: { product: CardProduct }) {
   const router = useRouter();
   const [added, setAdded] = useState(false);
   const soldOut = product.stock !== null && product.stock !== undefined && product.stock <= 0;
+  const savings =
+    product.compareAtPrice && product.compareAtPrice > product.price
+      ? product.compareAtPrice - product.price
+      : 0;
 
   const item = {
     productId: product.id,
@@ -63,6 +68,20 @@ export function ProductCard({ product }: { product: CardProduct }) {
         className="block relative focus-visible:outline-none overflow-hidden"
         aria-label={product.name}
       >
+        {product.hotSale || savings > 0 ? (
+          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 items-start">
+            {product.hotSale ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold uppercase tracking-wide px-2.5 py-1 shadow-sm">
+                <Flame className="w-3 h-3" /> Hot Sale
+              </span>
+            ) : null}
+            {savings > 0 ? (
+              <span className="inline-flex items-center rounded-full bg-brand-600 text-white text-[11px] font-extrabold px-2.5 py-1 shadow-sm">
+                Save {formatKES(savings)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {product.imageId ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}

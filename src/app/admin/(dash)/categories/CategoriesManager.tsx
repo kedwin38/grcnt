@@ -24,6 +24,7 @@ export type CategoryRow = {
   tracksStock: boolean;
   instantTopup: boolean;
   requiresRouterNumber: boolean;
+  showOnHome: boolean;
   fields: FieldRow[];
   sortOrder: number;
   active: boolean;
@@ -44,6 +45,7 @@ const emptyCategory: Omit<CategoryRow, "id" | "productCount"> = {
   tracksStock: false,
   instantTopup: true,
   requiresRouterNumber: false,
+  showOnHome: false,
   fields: [],
   sortOrder: 0,
   active: true,
@@ -133,6 +135,7 @@ export function CategoriesManager({ initial }: { initial: CategoryRow[] }) {
               {cat.tracksStock ? <span className="badge badge-blue">Tracks stock</span> : null}
               {cat.instantTopup ? <span className="badge badge-green">Instant top-up</span> : null}
               {cat.requiresRouterNumber ? <span className="badge badge-blue">Needs router number</span> : null}
+              {cat.showOnHome ? <span className="badge badge-green">On home page</span> : null}
               {cat.fields.map((f) => (
                 <span key={f.key} className="badge badge-gray">
                   {f.label}
@@ -175,6 +178,7 @@ function CategoryEditor({
   const [tracksStock, setTracksStock] = useState(value.tracksStock);
   const [instantTopup, setInstantTopup] = useState(value.instantTopup);
   const [requiresRouterNumber, setRequiresRouterNumber] = useState(value.requiresRouterNumber);
+  const [showOnHome, setShowOnHome] = useState(value.showOnHome);
   const [sortOrder, setSortOrder] = useState(String(value.sortOrder));
   const [active, setActive] = useState(value.active);
   const [fields, setFields] = useState<FieldRow[]>(value.fields.map((f) => ({ ...f })));
@@ -198,6 +202,7 @@ function CategoryEditor({
         tracksStock,
         instantTopup,
         requiresRouterNumber,
+        showOnHome,
         sortOrder: Math.max(0, parseInt(sortOrder || "0", 10) || 0),
         active,
         fields: fields.map((f) => ({
@@ -318,7 +323,7 @@ function CategoryEditor({
               />
               <span>
                 <span className="block text-sm font-bold text-ink">Needs a router number</span>
-                <span className="block text-[12px] text-ink-mute">e.g. WiFi/5G router packages — customer enters their router number at checkout, staff load it manually</span>
+                <span className="block text-[12px] text-ink-mute">e.g. WiFi/5G router packages — customer enters the router&apos;s SIM number (its phone number) at checkout, staff load it manually</span>
               </span>
             </label>
             <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3.5 cursor-pointer">
@@ -326,6 +331,13 @@ function CategoryEditor({
               <span>
                 <span className="block text-sm font-bold text-ink">Visible on site</span>
                 <span className="block text-[12px] text-ink-mute">Customers can browse it</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3.5 cursor-pointer">
+              <input type="checkbox" checked={showOnHome} onChange={(e) => setShowOnHome(e.target.checked)} className="mt-0.5 w-5 h-5 accent-[#3aa335]" />
+              <span>
+                <span className="block text-sm font-bold text-ink">Show on home page</span>
+                <span className="block text-[12px] text-ink-mute">Gets its own product carousel on the homepage</span>
               </span>
             </label>
           </div>

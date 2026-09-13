@@ -44,6 +44,7 @@ const CATEGORIES = [
     requiresImage: false,
     tracksStock: false,
     instantTopup: true,
+    showOnHome: true,
     sortOrder: 1,
     fields: [
       { key: "size_gb", label: "Size", type: "number", unit: "GB", badge: true },
@@ -66,6 +67,7 @@ const CATEGORIES = [
     requiresImage: false,
     tracksStock: false,
     instantTopup: true,
+    showOnHome: true,
     sortOrder: 2,
     fields: [{ key: "amount", label: "Airtime value", type: "number", unit: "KSh", badge: true }],
     products: [
@@ -84,6 +86,7 @@ const CATEGORIES = [
     requiresImage: false,
     tracksStock: false,
     instantTopup: true,
+    showOnHome: true,
     sortOrder: 3,
     fields: [
       { key: "minutes", label: "Minutes", type: "number", unit: "min", badge: true },
@@ -158,6 +161,7 @@ async function createCategoryWithProducts(cat) {
         attributes: JSON.stringify(p.attrs || {}),
         stock: cat.tracksStock ? (p.stock ?? 0) : null,
         featured: !!p.featured,
+        hotSale: !!p.hotSale,
         sortOrder: p.sortOrder,
       },
     });

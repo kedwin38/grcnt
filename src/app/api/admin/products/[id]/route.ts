@@ -50,6 +50,7 @@ export async function PATCH(
   if (input.lowStockAt !== undefined) data.lowStockAt = input.lowStockAt;
   if (input.active !== undefined) data.active = input.active;
   if (input.featured !== undefined) data.featured = input.featured;
+  if (input.hotSale !== undefined) data.hotSale = input.hotSale;
   if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
   if (input.categoryId !== undefined) data.categoryId = input.categoryId;
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Loader2, LogIn } from "lucide-react";
 import { api } from "@/lib/client";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export function LoginForm({ next }: { next: string }) {
   const router = useRouter();
@@ -45,12 +46,10 @@ export function LoginForm({ next }: { next: string }) {
       </div>
       <div>
         <label htmlFor="password" className="label">Password</label>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
-          className="input"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
           placeholder="Your password"
           autoComplete="current-password"
           required
