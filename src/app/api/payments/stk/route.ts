@@ -29,6 +29,28 @@ export async function POST(req: NextRequest) {
   });
   if (!order) return fail("Order not found or already paid.", 404);
 
+  // Local/demo simulation — no Daraja call, no internet required, and
+  // deliberately checked before resolving payment-account credentials so
+  // demo mode works even with no Daraja setup at all.
+  if (isSimulated()) {
+    const fakeId = `SIM-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    await db.payment.create({
+      data: {
+        orderId: order.id,
+        status: "PENDING",
+        amount: order.total,
+        phone,
+        merchantRequestId: fakeId,
+        checkoutRequestId: fakeId,
+        simulated: true,
+      },
+    });
+    return ok({
+      simulated: true,
+      message: "Simulated M-Pesa prompt sent (demo mode). Confirming shortly…",
+    });
+  }
+
   let account;
   try {
     account = await getPaymentAccount(order.paymentAccountId);
@@ -51,26 +73,6 @@ export async function POST(req: NextRequest) {
     throw err;
   }
   const callbackUrl = `${resolveOrigin(req, account.callbackBaseUrl || undefined)}/api/mpesa/callback`;
-
-  // Local/demo simulation — no Daraja call, no internet required.
-  if (isSimulated()) {
-    const fakeId = `SIM-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    await db.payment.create({
-      data: {
-        orderId: order.id,
-        status: "PENDING",
-        amount: order.total,
-        phone,
-        merchantRequestId: fakeId,
-        checkoutRequestId: fakeId,
-        simulated: true,
-      },
-    });
-    return ok({
-      simulated: true,
-      message: "Simulated M-Pesa prompt sent (demo mode). Confirming shortly…",
-    });
-  }
 
   try {
     const res = await stkPush(account, {

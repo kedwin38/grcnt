@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Loader2,
   RefreshCw,
   Smartphone,
@@ -13,7 +15,14 @@ import {
 import { formatKES, prettyPhone } from "@/lib/format";
 import { api } from "@/lib/client";
 
-type Phase = "input" | "waiting" | "success" | "failed";
+type Phase = "input" | "waiting" | "paused" | "success" | "failed";
+
+// How long to keep auto-polling before pausing (the server keeps
+// reconciling the payment in the background regardless — see
+// src/lib/payment-reconciliation.ts — so pausing here only stops the
+// browser's own polling, it never abandons the payment itself).
+const AUTO_POLL_LIMIT_SECONDS = 600;
+const POLL_INTERVAL_MS = 3000;
 
 export function StkPay({
   order,
@@ -31,7 +40,7 @@ export function StkPay({
   const [phone, setPhone] = useState(prettyPhone(defaultPhone));
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(90);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -43,42 +52,45 @@ export function StkPay({
 
   useEffect(() => stopPolling, [stopPolling]);
 
-  const startPolling = useCallback(() => {
-    stopPolling();
-    setSecondsLeft(90);
-    pollTimer.current = setInterval(async () => {
-      setSecondsLeft((s) => Math.max(0, s - 3));
-      try {
-        const status = await api<{
-          status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED";
-          receipt?: string | null;
-          resultDesc?: string | null;
-        }>(`/api/payments/status/${order.code}`);
-        if (status.status === "SUCCESS") {
-          stopPolling();
-          setReceipt(status.receipt || null);
-          setPhase("success");
-          router.refresh();
-        } else if (status.status === "FAILED" || status.status === "CANCELLED") {
-          stopPolling();
-          setError(status.resultDesc || "The payment did not go through.");
-          setPhase("failed");
-        }
-      } catch {
-        /* transient network error — keep polling */
+  const poll = useCallback(async () => {
+    try {
+      const status = await api<{
+        status: "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED";
+        receipt?: string | null;
+        resultDesc?: string | null;
+      }>(`/api/payments/status/${order.code}`);
+      if (status.status === "SUCCESS") {
+        stopPolling();
+        setReceipt(status.receipt || null);
+        setPhase("success");
+        router.refresh();
+      } else if (status.status === "FAILED" || status.status === "CANCELLED") {
+        stopPolling();
+        setError(status.resultDesc || "The payment did not go through.");
+        setPhase("failed");
       }
-    }, 3000);
+    } catch {
+      /* transient network error — keep polling */
+    }
   }, [order.code, router, stopPolling]);
 
-  useEffect(() => {
-    if (secondsLeft === 0 && phase === "waiting") {
-      stopPolling();
-      setError(
-        "We didn't receive a confirmation in time. If you entered your PIN, check your order status in a minute — or try again."
-      );
-      setPhase("failed");
-    }
-  }, [secondsLeft, phase, stopPolling]);
+  const startPolling = useCallback(() => {
+    stopPolling();
+    setElapsedSeconds(0);
+    void poll();
+    pollTimer.current = setInterval(() => {
+      setElapsedSeconds((s) => {
+        const next = s + POLL_INTERVAL_MS / 1000;
+        if (next >= AUTO_POLL_LIMIT_SECONDS) {
+          stopPolling();
+          setPhase((p) => (p === "waiting" ? "paused" : p));
+          return next;
+        }
+        void poll();
+        return next;
+      });
+    }, POLL_INTERVAL_MS);
+  }, [poll, stopPolling]);
 
   async function initiate() {
     setError(null);
@@ -90,6 +102,11 @@ export function StkPay({
       setError(err instanceof Error ? err.message : "Could not send the M-Pesa prompt.");
       setPhase("failed");
     }
+  }
+
+  function checkAgain() {
+    setPhase("waiting");
+    startPolling();
   }
 
   return (
@@ -165,8 +182,20 @@ export function StkPay({
               </p>
               <div className="mt-4 flex items-center justify-center gap-2 text-[13px] text-ink-mute">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
-                Waiting for confirmation… {secondsLeft}s
+                {elapsedSeconds < 60
+                  ? "Waiting for confirmation…"
+                  : "Still waiting — this can take a couple of minutes…"}
               </div>
+              {elapsedSeconds >= 60 ? (
+                <p className="text-[12px] text-ink-mute mt-2 max-w-xs mx-auto leading-relaxed">
+                  No need to keep this tab open — we&apos;ll finish confirming even if you leave.
+                  Check{" "}
+                  <Link href={`/orders/${order.code}`} className="underline font-semibold">
+                    your order status
+                  </Link>{" "}
+                  any time.
+                </p>
+              ) : null}
               <button
                 className="btn btn-md btn-ghost mt-5"
                 onClick={() => {
@@ -176,6 +205,28 @@ export function StkPay({
               >
                 Cancel and retry
               </button>
+            </div>
+          ) : null}
+
+          {phase === "paused" ? (
+            <div className="mt-6 text-center animate-fade-in">
+              <div className="mx-auto w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
+                <Clock className="w-9 h-9 text-amber-700" />
+              </div>
+              <h2 className="mt-5 font-extrabold text-lg text-ink">Still no confirmation</h2>
+              <p className="text-ink-soft text-sm mt-1.5 max-w-xs mx-auto leading-relaxed">
+                Daraja hasn&apos;t given a final answer yet. This isn&apos;t a failure — we&apos;re
+                still confirming in the background, and your order stays open. If you entered
+                your PIN, no need to pay again.
+              </p>
+              <div className="mt-5 flex flex-col items-center gap-2">
+                <button className="btn btn-md btn-primary" onClick={checkAgain}>
+                  <RefreshCw className="w-4 h-4" /> Check again
+                </button>
+                <Link href={`/orders/${order.code}`} className="text-[13px] font-semibold text-brand-700 hover:underline">
+                  View order status
+                </Link>
+              </div>
             </div>
           ) : null}
 
