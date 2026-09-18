@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Check, Flame, ShoppingCart } from "lucide-react";
+import { Check, Flame, ShoppingCart, Zap } from "lucide-react";
 import { useCart } from "./CartProvider";
 import { useToast } from "./Toast";
 import { formatKES } from "@/lib/format";
@@ -20,6 +20,7 @@ export type CardProduct = {
   categoryIcon: string;
   badge?: string | null; // primary attribute value e.g. "30 GB"
   stock?: number | null;
+  lowStockAt?: number;
   instant?: boolean;
   requiresRouterNumber?: boolean;
   hotSale?: boolean;
@@ -31,6 +32,12 @@ export function ProductCard({ product }: { product: CardProduct }) {
   const router = useRouter();
   const [added, setAdded] = useState(false);
   const soldOut = product.stock !== null && product.stock !== undefined && product.stock <= 0;
+  const lowStock =
+    !soldOut &&
+    product.stock !== null &&
+    product.stock !== undefined &&
+    product.lowStockAt !== undefined &&
+    product.stock <= product.lowStockAt;
   const savings =
     product.compareAtPrice && product.compareAtPrice > product.price
       ? product.compareAtPrice - product.price
@@ -68,7 +75,7 @@ export function ProductCard({ product }: { product: CardProduct }) {
         className="block relative focus-visible:outline-none overflow-hidden"
         aria-label={product.name}
       >
-        {product.hotSale || savings > 0 ? (
+        {product.hotSale || savings > 0 || lowStock ? (
           <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 items-start">
             {product.hotSale ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-extrabold uppercase tracking-wide px-2.5 py-1 shadow-sm">
@@ -78,6 +85,11 @@ export function ProductCard({ product }: { product: CardProduct }) {
             {savings > 0 ? (
               <span className="inline-flex items-center rounded-full bg-brand-600 text-white text-[11px] font-extrabold px-2.5 py-1 shadow-sm">
                 Save {formatKES(savings)}
+              </span>
+            ) : null}
+            {lowStock ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-white text-[11px] font-extrabold uppercase tracking-wide px-2.5 py-1 shadow-sm">
+                <Zap className="w-3 h-3" /> Only {product.stock} left
               </span>
             ) : null}
           </div>

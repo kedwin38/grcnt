@@ -67,6 +67,7 @@ export function toCardProduct(product: ProductWithCategory): CardProduct {
     categoryIcon: product.category.icon,
     badge: badgeValue(product),
     stock: product.stock,
+    lowStockAt: product.lowStockAt,
     instant: product.category.instantTopup,
     requiresRouterNumber: product.category.requiresRouterNumber,
     hotSale: product.hotSale,

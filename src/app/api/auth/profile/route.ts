@@ -20,13 +20,19 @@ export async function PATCH(req: NextRequest) {
   const parsed = profileSchema.safeParse(body);
   if (!parsed.success) return fail(zodMessage(parsed.error), 422);
 
-  await db.user.update({
-    where: { id: user.id },
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email || null,
-    },
-  });
+  const data: { name: string; email: string | null; phone?: string } = {
+    name: parsed.data.name,
+    email: parsed.data.email || null,
+  };
+  if (parsed.data.phone) {
+    const existing = await db.user.findUnique({ where: { phone: parsed.data.phone } });
+    if (existing && existing.id !== user.id) {
+      return fail("That phone number is already linked to another account.", 409);
+    }
+    data.phone = parsed.data.phone;
+  }
+
+  await db.user.update({ where: { id: user.id }, data });
   await audit({ id: user.id, name: user.name }, "profile.update", "user", user.id);
   return ok({ updated: true });
 }
@@ -42,8 +48,11 @@ export async function PUT(req: NextRequest) {
   const parsed = changePasswordSchema.safeParse(body);
   if (!parsed.success) return fail(zodMessage(parsed.error), 422);
 
-  const valid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
-  if (!valid) return fail("Your current password is incorrect.", 403);
+  if (user.passwordHash) {
+    if (!parsed.data.currentPassword) return fail("Enter your current password.", 422);
+    const valid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
+    if (!valid) return fail("Your current password is incorrect.", 403);
+  }
 
   await db.user.update({
     where: { id: user.id },

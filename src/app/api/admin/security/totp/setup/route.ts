@@ -22,6 +22,6 @@ export async function POST(req: NextRequest) {
 
   return ok({
     secret,
-    otpauthUri: otpauthUri(secret, user.phone, "Green Color Networks"),
+    otpauthUri: otpauthUri(secret, user.phone || user.name, "Green Color Networks"),
   });
 }

@@ -1,13 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Check, KeyRound, Loader2, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, KeyRound, Loader2, Phone, UserRound } from "lucide-react";
 import { api } from "@/lib/client";
 import { PasswordInput } from "@/components/PasswordInput";
 
-export function ProfileForm({ name, email }: { name: string; email: string }) {
+export function ProfileForm({
+  name,
+  email,
+  phone,
+  hasPassword,
+}: {
+  name: string;
+  email: string;
+  phone: string | null;
+  hasPassword: boolean;
+}) {
+  const router = useRouter();
   const [profileName, setProfileName] = useState(name);
   const [profileEmail, setProfileEmail] = useState(email);
+  const [profilePhone, setProfilePhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -25,8 +38,13 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
     setProfileSaved(false);
     setSavingProfile(true);
     try {
-      await api("/api/auth/profile", { method: "PATCH", body: { name: profileName, email: profileEmail } });
+      await api("/api/auth/profile", {
+        method: "PATCH",
+        body: { name: profileName, email: profileEmail, phone: profilePhone || undefined },
+      });
       setProfileSaved(true);
+      setProfilePhone("");
+      router.refresh();
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : "Could not save.");
     } finally {
@@ -49,6 +67,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      router.refresh();
     } catch (err) {
       setPwError(err instanceof Error ? err.message : "Could not change password.");
     } finally {
@@ -70,6 +89,29 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
           <label htmlFor="pemail" className="label">Email (optional)</label>
           <input id="pemail" type="email" className="input" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} placeholder="you@example.com" />
         </div>
+        {phone ? (
+          <div>
+            <label className="label">Phone number</label>
+            <div className="input bg-brand-50/40 text-ink-soft flex items-center gap-2">
+              <Phone className="w-4 h-4" /> {phone}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="pphone" className="label">Phone number (optional)</label>
+            <input
+              id="pphone"
+              className="input"
+              value={profilePhone}
+              onChange={(e) => setProfilePhone(e.target.value)}
+              placeholder="0712 345 678"
+              inputMode="tel"
+            />
+            <p className="text-[12px] text-ink-mute mt-1">
+              Add a phone number to also log in with it next time and speed up checkout.
+            </p>
+          </div>
+        )}
         {profileError ? <p className="field-error">{profileError}</p> : null}
         {profileSaved ? (
           <p className="text-[13px] font-semibold text-brand-700 flex items-center gap-1.5">
@@ -83,12 +125,19 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
 
       <form onSubmit={changePassword} className="card p-6 space-y-4">
         <h2 className="font-extrabold text-ink flex items-center gap-2">
-          <KeyRound className="w-5 h-5 text-brand-600" /> Change password
+          <KeyRound className="w-5 h-5 text-brand-600" /> {hasPassword ? "Change password" : "Set a password"}
         </h2>
-        <div>
-          <label htmlFor="cpw" className="label">Current password</label>
-          <PasswordInput id="cpw" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" required />
-        </div>
+        {!hasPassword ? (
+          <p className="text-[13px] text-ink-soft -mt-2">
+            You signed up with Google — set a password if you'd also like to log in with your phone number.
+          </p>
+        ) : null}
+        {hasPassword ? (
+          <div>
+            <label htmlFor="cpw" className="label">Current password</label>
+            <PasswordInput id="cpw" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" required />
+          </div>
+        ) : null}
         <div>
           <label htmlFor="npw" className="label">New password</label>
           <PasswordInput id="npw" value={newPassword} onChange={setNewPassword} autoComplete="new-password" minLength={8} required />
@@ -104,7 +153,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
           </p>
         ) : null}
         <button className="btn btn-md btn-primary" disabled={savingPw}>
-          {savingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Change password
+          {savingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {hasPassword ? "Change password" : "Set password"}
         </button>
       </form>
     </div>

@@ -18,7 +18,9 @@ export async function POST(req: NextRequest) {
   const parsed = totpDisableSchema.safeParse(body);
   if (!parsed.success) return fail(zodMessage(parsed.error), 422);
 
-  const valid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
+  const valid = user.passwordHash
+    ? await bcrypt.compare(parsed.data.currentPassword, user.passwordHash)
+    : false;
   if (!valid) return fail("Wrong password.", 401);
 
   await db.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null } });

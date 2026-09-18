@@ -26,13 +26,16 @@ export const loginSchema = z.object({
 });
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
+  // Empty for a Google-only account setting a password for the first time —
+  // the route only requires/checks it when the account already has one.
+  currentPassword: z.string().optional().default(""),
   newPassword: passwordSchema,
 });
 
 export const profileSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().email("Enter a valid email").optional().or(z.literal("")),
+  phone: phoneSchema.optional().or(z.literal("")),
 });
 
 // ─── Orders & payments ───────────────────────────────────────────────────────
@@ -50,6 +53,10 @@ export const orderCreateSchema = z
     // The router's own SIM number (e.g. 0700 000 000), not a serial number —
     // that's what the package actually gets loaded onto.
     routerNumber: phoneSchema.optional(),
+    // Only asked for when the account has no phone on file (a Google-only
+    // customer) and the cart has neither a top-up nor router number to fall
+    // back on for reaching them about the order.
+    contactPhone: phoneSchema.optional(),
     address: z.string().trim().max(300).optional().or(z.literal("")),
     notes: z.string().trim().max(500).optional().or(z.literal("")),
   })

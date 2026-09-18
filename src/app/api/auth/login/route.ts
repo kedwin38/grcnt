@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await db.user.findUnique({ where: { phone } });
-  const valid = user && user.active
+  const valid = user && user.active && user.passwordHash
     ? await bcrypt.compare(password, user.passwordHash)
     : false;
 

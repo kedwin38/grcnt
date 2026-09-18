@@ -117,3 +117,61 @@ describe("POST /api/orders — resolving a single payment account per order", ()
     expect(order.paymentAccountId).toBe(defaultAccount.id);
   });
 });
+
+async function makePhysicalProduct() {
+  const category = await db.category.create({
+    data: {
+      name: "Test Phones",
+      slug: `test-phones-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      tracksStock: true,
+      instantTopup: false,
+    },
+  });
+  return db.product.create({
+    data: {
+      categoryId: category.id,
+      name: "Test Phone",
+      slug: `test-phone-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      price: 5000,
+      stock: 10,
+    },
+  });
+}
+
+describe("POST /api/orders — a Google-only account (no phone on file) needs a contact number", () => {
+  it("rejects a pickup order with no phone anywhere", async () => {
+    const user = await db.user.create({
+      data: { name: "Google Customer", email: `g-${Date.now()}@example.com`, googleId: `g-${Date.now()}` },
+    });
+    vi.mocked(apiUser).mockResolvedValue(user as never);
+    const product = await makePhysicalProduct();
+
+    const res = await orderRequest({
+      items: [{ productId: product.id, qty: 1 }],
+      fulfilment: "PICKUP",
+    });
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error).toMatch(/contact phone/i);
+  });
+
+  it("accepts a pickup order using the supplied contactPhone", async () => {
+    const user = await db.user.create({
+      data: { name: "Google Customer 2", email: `g2-${Date.now()}@example.com`, googleId: `g2-${Date.now()}` },
+    });
+    vi.mocked(apiUser).mockResolvedValue(user as never);
+    const product = await makePhysicalProduct();
+
+    const res = await orderRequest({
+      items: [{ productId: product.id, qty: 1 }],
+      fulfilment: "PICKUP",
+      contactPhone: "0712345678",
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const order = await db.order.findUniqueOrThrow({ where: { code: body.data.code } });
+    expect(order.customerPhone).toBe("254712345678");
+  });
+});

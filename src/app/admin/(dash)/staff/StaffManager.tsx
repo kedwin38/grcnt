@@ -9,7 +9,7 @@ import { prettyPhone } from "@/lib/format";
 type StaffMember = {
   id: number;
   name: string;
-  phone: string;
+  phone: string | null;
   role: "STAFF" | "ADMIN";
   active: boolean;
   createdAt: string;
@@ -98,7 +98,7 @@ export function StaffManager({
               <tr key={member.id} className={member.active ? "" : "opacity-60"}>
                 <td className="td">
                   <div className="font-bold text-ink">{member.name}</div>
-                  <div className="text-[12px] text-ink-mute">{prettyPhone(member.phone)}</div>
+                  <div className="text-[12px] text-ink-mute">{member.phone ? prettyPhone(member.phone) : "—"}</div>
                 </td>
                 <td className="td">
                   <span className={`badge ${member.role === "ADMIN" ? "badge-green" : "badge-blue"}`}>

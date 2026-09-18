@@ -18,7 +18,14 @@ export const env = {
   // anyone without a session. Set ADMIN_LOGIN_PATH in production to a value
   // only staff know; the fallback here is a reasonable default, not a secret.
   adminLoginPath: (process.env.ADMIN_LOGIN_PATH || "staff-gateway-7k2x").replace(/^\/+|\/+$/g, ""),
+  // "Continue with Google" is only offered when both are set — unconfigured
+  // in dev/preview by default, so the button just doesn't render rather
+  // than erroring.
+  googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
 };
+
+export const googleOAuthEnabled = Boolean(env.googleClientId && env.googleClientSecret);
 
 if (env.isProd && env.sessionSecret.startsWith("dev-insecure")) {
   console.error(
