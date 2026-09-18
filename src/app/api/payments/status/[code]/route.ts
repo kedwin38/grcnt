@@ -2,15 +2,15 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { apiUser } from "@/lib/session";
-import { stkQuery, isSimulated, DARAJA_TERMINAL_FAILURE_CODES } from "@/lib/daraja";
-import { getPaymentAccount } from "@/lib/payment-accounts";
-import { newOrderCode } from "@/lib/codes";
+import { reconcilePayment } from "@/lib/payment-reconciliation";
 
 export const dynamic = "force-dynamic";
 
 // Payment status endpoint — the browser polls this while the customer enters
 // their PIN. Doubles as the reconciliation path: if Daraja's callback was
-// silent, we proactively query the STK result.
+// silent, we proactively query the STK result. The same resolution logic
+// also runs in the background (see instrumentation-node.ts) so a payment
+// still gets finalised even if nobody is polling this endpoint.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
@@ -36,85 +36,17 @@ export async function GET(
   }
 
   const payment = order.payments[0];
-  if (!payment || payment.status !== "PENDING") {
+  if (!payment) {
+    return ok({ status: "PENDING" });
+  }
+  if (payment.status !== "PENDING") {
     return ok({
-      status: payment ? payment.status : "PENDING",
-      receipt: payment?.mpesaReceipt || null,
-      resultDesc: payment?.resultDesc || null,
+      status: payment.status,
+      receipt: payment.mpesaReceipt || null,
+      resultDesc: payment.resultDesc || null,
     });
   }
 
-  const ageMs = Date.now() - payment.createdAt.getTime();
-
-  // Simulated demo payment resolves after a short delay.
-  if (payment.simulated && ageMs > 6000) {
-    const receipt = `SIM${newOrderCode().slice(4, 10)}`;
-    const autoCompleted = order.fulfilment === "INSTANT_TOPUP";
-    await db.$transaction(async (tx) => {
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: { status: "SUCCESS", mpesaReceipt: receipt, resultCode: "0", resultDesc: "Simulated success" },
-      });
-      await tx.order.update({
-        where: { id: order.id },
-        data: { status: autoCompleted ? "COMPLETED" : "PAID" },
-      });
-      for (const item of await tx.orderItem.findMany({ where: { orderId: order.id }, include: { product: { include: { category: true } } } })) {
-        if (item.product && item.product.category.tracksStock && item.product.stock !== null) {
-          await tx.product.update({
-            where: { id: item.product.id },
-            data: { stock: { decrement: item.qty } },
-          });
-        }
-      }
-    });
-    return ok({ status: "SUCCESS", receipt, orderStatus: autoCompleted ? "COMPLETED" : "PAID" });
-  }
-
-  // Safety net: query Daraja directly when the callback is late.
-  if (!payment.simulated && ageMs > 12000 && payment.checkoutRequestId) {
-    try {
-      const account = await getPaymentAccount(order.paymentAccountId);
-      const result = await stkQuery(account, payment.checkoutRequestId);
-      const rc = result.ResultCode ?? result.ResponseCode;
-      if (rc === "0") {
-        const receipt = extractReceiptQuery(result);
-        const autoCompleted = order.fulfilment === "INSTANT_TOPUP";
-        await db.$transaction(async (tx) => {
-          await tx.payment.update({
-            where: { id: payment.id },
-            data: { status: "SUCCESS", resultCode: rc, resultDesc: result.ResultDesc, mpesaReceipt: receipt },
-          });
-          await tx.order.update({ where: { id: order.id }, data: { status: autoCompleted ? "COMPLETED" : "PAID" } });
-          for (const item of await tx.orderItem.findMany({ where: { orderId: order.id }, include: { product: { include: { category: true } } } })) {
-            if (item.product && item.product.category.tracksStock && item.product.stock !== null) {
-              await tx.product.update({ where: { id: item.product.id }, data: { stock: { decrement: item.qty } } });
-            }
-          }
-        });
-        return ok({ status: "SUCCESS", receipt, orderStatus: autoCompleted ? "COMPLETED" : "PAID" });
-      }
-      // Only finalise on a confirmed terminal code. Any other non-zero code
-      // (including ones we don't recognise) means Daraja hasn't concluded
-      // yet — keep polling rather than risk failing a payment that's about
-      // to succeed while the customer is still entering their PIN.
-      if (rc !== undefined && rc !== null && DARAJA_TERMINAL_FAILURE_CODES.has(String(rc))) {
-        const cancelled = rc === "1032";
-        await db.payment.update({
-          where: { id: payment.id },
-          data: { status: cancelled ? "CANCELLED" : "FAILED", resultCode: rc, resultDesc: result.ResultDesc },
-        });
-        return ok({ status: cancelled ? "CANCELLED" : "FAILED", resultDesc: result.ResultDesc });
-      }
-    } catch {
-      /* query not ready yet — keep polling */
-    }
-  }
-
-  return ok({ status: "PENDING" });
-}
-
-function extractReceiptQuery(result: { ResultDesc?: string }): string | null {
-  // Push Query doesn't return the receipt code directly; keep desc as reference.
-  return result.ResultDesc ? null : null;
+  const result = await reconcilePayment(payment.id);
+  return ok(result);
 }

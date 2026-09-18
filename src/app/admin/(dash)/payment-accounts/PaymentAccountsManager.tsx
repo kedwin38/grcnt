@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   Loader2,
   Plug,
   Plus,
+  RefreshCw,
   Star,
   Trash2,
   Wallet,
@@ -200,7 +201,18 @@ function AccountEditor({
 
   const [testPhone, setTestPhone] = useState("");
   const [testing, setTesting] = useState(false);
+  const [testPending, setTestPending] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const testPollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const testPollElapsed = useRef(0);
+
+  const stopTestPolling = () => {
+    if (testPollTimer.current) {
+      clearInterval(testPollTimer.current);
+      testPollTimer.current = null;
+    }
+  };
+  useEffect(() => stopTestPolling, []);
 
   async function save() {
     setError(null);
@@ -235,19 +247,60 @@ function AccountEditor({
     }
   }
 
+  const TEST_POLL_LIMIT_SECONDS = 180;
+
+  function pollTestStatus(accountId: number, checkoutRequestId: string) {
+    testPollElapsed.current = 0;
+    setTestPending(true);
+    testPollTimer.current = setInterval(async () => {
+      testPollElapsed.current += 5;
+      try {
+        const status = await api<{ status: "PENDING" | "SUCCESS" | "FAILED"; message?: string }>(
+          `/api/admin/payment-accounts/${accountId}/test/status?checkoutRequestId=${encodeURIComponent(checkoutRequestId)}`
+        );
+        if (status.status === "SUCCESS") {
+          stopTestPolling();
+          setTestPending(false);
+          setTestResult({ ok: true, message: status.message || "Confirmed." });
+        } else if (status.status === "FAILED") {
+          stopTestPolling();
+          setTestPending(false);
+          setTestResult({ ok: false, message: status.message || "Test failed." });
+        } else if (testPollElapsed.current >= TEST_POLL_LIMIT_SECONDS) {
+          stopTestPolling();
+          setTestPending(false);
+          setTestResult({
+            ok: true,
+            message: `Daraja hasn't given a final answer after ${TEST_POLL_LIMIT_SECONDS}s — this usually just means the PIN hasn't been entered yet, not a failure. It's fine to stop watching; if you did enter the PIN, your till is working.`,
+          });
+        }
+      } catch {
+        /* transient error — keep polling */
+      }
+    }, 5000);
+  }
+
   async function testConnection(withPush: boolean) {
     if (isNew) {
       setTestResult({ ok: false, message: "Save the account first, then test it." });
       return;
     }
+    stopTestPolling();
+    setTestPending(false);
     setTestResult(null);
     setTesting(true);
     try {
-      const res = await api<{ message: string }>(
-        `/api/admin/payment-accounts/${(value as PaymentAccountRow).id}/test`,
+      const accountId = (value as PaymentAccountRow).id;
+      const res = await api<{ message: string; checkoutRequestId?: string }>(
+        `/api/admin/payment-accounts/${accountId}/test`,
         { body: withPush ? { phone: testPhone, amount: 1 } : {} }
       );
-      setTestResult({ ok: true, message: res.message });
+      if (res.checkoutRequestId) {
+        setTestResult({ ok: true, message: res.message });
+        pollTestStatus(accountId, res.checkoutRequestId);
+      } else {
+        setTestResult({ ok: true, message: res.message });
+      }
     } catch (err) {
       setTestResult({ ok: false, message: err instanceof Error ? err.message : "Test failed." });
     } finally {
@@ -380,7 +433,7 @@ function AccountEditor({
                 Safaricom, and optionally sends a real KSh 1 STK push.
               </p>
               <div className="flex flex-wrap gap-2">
-                <button className="btn btn-md btn-outline" onClick={() => testConnection(false)} disabled={testing}>
+                <button className="btn btn-md btn-outline" onClick={() => testConnection(false)} disabled={testing || testPending}>
                   {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Check credentials
                 </button>
                 <input
@@ -390,11 +443,17 @@ function AccountEditor({
                   placeholder="e.g. 0712 345 678"
                   inputMode="tel"
                 />
-                <button className="btn btn-md btn-outline" onClick={() => testConnection(true)} disabled={testing || !testPhone}>
+                <button className="btn btn-md btn-outline" onClick={() => testConnection(true)} disabled={testing || testPending || !testPhone}>
                   Send KSh 1 test push
                 </button>
               </div>
-              {testResult ? (
+              {testPending ? (
+                <div className="rounded-xl px-3.5 py-3 text-[13px] font-medium border bg-amber-50 border-amber-200 text-amber-800 flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                  Waiting for the PIN to be entered — this can take a couple of minutes, no need to
+                  do anything else.
+                </div>
+              ) : testResult ? (
                 <div
                   className={`rounded-xl px-3.5 py-3 text-[13px] font-medium border ${
                     testResult.ok

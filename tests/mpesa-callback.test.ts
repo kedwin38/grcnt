@@ -132,6 +132,28 @@ describe("POST /api/mpesa/callback — finalising a transaction", () => {
     expect(body.ResultCode).toBe(0);
   });
 
+  it("backfills the receipt when a success callback arrives after the safety net already resolved the payment", async () => {
+    const { order, payment, product } = await makePendingOrderWithPayment({ qty: 1, stock: 10 });
+
+    // Simulate the background/interactive safety net (src/lib/payment-reconciliation.ts)
+    // having already resolved this via STK Push Query — which never returns
+    // a receipt — before Daraja's own callback lands.
+    await db.payment.update({ where: { id: payment.id }, data: { status: "SUCCESS", mpesaReceipt: null } });
+    await db.order.update({ where: { id: order.id }, data: { status: "COMPLETED" } });
+    await db.product.update({ where: { id: product.id }, data: { stock: 9 } }); // already decremented once
+
+    const res = await mpesaCallback(
+      callbackRequest(successCallback(payment.checkoutRequestId!, payment.amount, payment.phone))
+    );
+    expect(res.status).toBe(200);
+
+    const updatedPayment = await db.payment.findUniqueOrThrow({ where: { id: payment.id } });
+    const updatedProduct = await db.product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(updatedPayment.status).toBe("SUCCESS");
+    expect(updatedPayment.mpesaReceipt).toBe("NLJ7RT61SV"); // backfilled
+    expect(updatedProduct.stock).toBe(9); // not decremented a second time
+  });
+
   it("is idempotent: a repeated callback after the payment is already resolved changes nothing", async () => {
     const { order, payment, product } = await makePendingOrderWithPayment({ qty: 2, stock: 10 });
 
