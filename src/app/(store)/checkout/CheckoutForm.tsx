@@ -22,6 +22,10 @@ export function CheckoutForm({
   const hasRouter = useMemo(() => items.some((i) => i.requiresRouterNumber), [items]);
   const hasPhysical = useMemo(() => items.some((i) => !i.instant && !i.requiresRouterNumber), [items]);
   const hasInstant = useMemo(() => items.some((i) => i.instant && !i.requiresRouterNumber), [items]);
+  // A Google-only account has no phone on file — if the cart doesn't already
+  // collect one (top-up / router number), a contact number for this order
+  // must be asked for explicitly so staff can always reach the customer.
+  const needsContactPhone = !defaultPhone && !hasInstant && !hasRouter;
 
   const [fulfilment, setFulfilment] = useState<Fulfilment>("INSTANT_TOPUP");
   // The cart hydrates from localStorage a tick after mount, so `items` (and
@@ -36,6 +40,7 @@ export function CheckoutForm({
   }, [items.length, hasPhysical, hasRouter]);
   const [topupPhone, setTopupPhone] = useState(prettyPhone(defaultPhone));
   const [routerNumber, setRouterNumber] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,6 +48,10 @@ export function CheckoutForm({
 
   async function placeOrder() {
     setError(null);
+    if (needsContactPhone && !contactPhone.trim()) {
+      setError("Enter a contact phone number.");
+      return;
+    }
     setBusy(true);
     try {
       const data = await api<{ code: string }>("/api/orders", {
@@ -51,6 +60,7 @@ export function CheckoutForm({
           fulfilment,
           topupPhone: hasInstant ? topupPhone : undefined,
           routerNumber: hasRouter ? routerNumber : undefined,
+          contactPhone: needsContactPhone ? contactPhone : undefined,
           address: fulfilment === "DELIVERY" ? address : "",
           notes,
         },
@@ -207,6 +217,27 @@ export function CheckoutForm({
               placeholder="e.g. 0712 345 678"
               inputMode="tel"
               autoComplete="tel"
+            />
+          </section>
+        ) : null}
+
+        {needsContactPhone ? (
+          <section className="card p-6">
+            <h2 className="font-extrabold text-ink flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-brand-600" />
+              Contact phone
+            </h2>
+            <p className="text-[13px] text-ink-soft mt-1">
+              A number we can reach you on about this order.
+            </p>
+            <input
+              className="input mt-3 max-w-xs"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              placeholder="e.g. 0712 345 678"
+              inputMode="tel"
+              autoComplete="tel"
+              required
             />
           </section>
         ) : null}

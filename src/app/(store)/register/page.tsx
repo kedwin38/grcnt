@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/session";
+import { googleOAuthEnabled } from "@/lib/env";
+import { GoogleButton } from "@/components/GoogleButton";
 import { RegisterForm } from "./RegisterForm";
 
 export const metadata: Metadata = { title: "Create account", robots: { index: false } };
@@ -22,6 +24,16 @@ export default async function RegisterPage({
         <p className="text-ink-soft text-sm mt-1">
           One phone number is all we need — no paperwork.
         </p>
+        {googleOAuthEnabled ? (
+          <div className="mt-6">
+            <GoogleButton next={next || "/orders"} label="Sign up with Google" />
+            <div className="flex items-center gap-3 my-5">
+              <span className="h-px bg-black/10 flex-1" />
+              <span className="text-[12px] font-semibold text-ink-mute uppercase tracking-wide">or use your phone</span>
+              <span className="h-px bg-black/10 flex-1" />
+            </div>
+          </div>
+        ) : null}
         <RegisterForm next={next || "/orders"} />
         <p className="text-sm text-ink-soft mt-6 text-center">
           Already registered?{" "}

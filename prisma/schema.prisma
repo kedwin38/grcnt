@@ -19,9 +19,11 @@ enum Role {
 model User {
   id           Int      @id @default(autoincrement())
   name         String
-  phone        String   @unique // normalized 2547XXXXXXXX / 2541XXXXXXXX
+  phone        String?  @unique // normalized 2547XXXXXXXX / 2541XXXXXXXX — null for Google-only accounts
   email        String?
-  passwordHash String
+  passwordHash String? // null for Google-only accounts (no password set)
+  googleId     String?  @unique // Google "sub" claim, set once signed in with Google
+  avatarUrl    String?
   role         Role     @default(CUSTOMER)
   active       Boolean  @default(true)
   totpSecret   String? // encrypted TOTP secret (staff/admin 2FA only)

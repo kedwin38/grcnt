@@ -36,7 +36,7 @@ export default async function AdminCustomerDetail({
         </Link>
         <h1 className="text-2xl font-extrabold tracking-tight mt-1">{customer.name}</h1>
         <p className="text-ink-soft text-sm mt-0.5">
-          {prettyPhone(customer.phone)}
+          {customer.phone ? prettyPhone(customer.phone) : "No phone on file"}
           {customer.email ? ` · ${customer.email}` : ""} · joined{" "}
           {formatDateTime(customer.createdAt)}
         </p>

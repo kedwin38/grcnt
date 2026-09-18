@@ -31,7 +31,9 @@ export default async function ShopPage({
   const categories = await db.category.findMany({
     where: { active: true },
     orderBy: { sortOrder: "asc" },
+    include: { _count: { select: { products: { where: { active: true } } } } },
   });
+  const totalProducts = categories.reduce((sum, c) => sum + c._count.products, 0);
 
   const activeCat = cat ? categories.find((c) => c.slug === cat) : undefined;
   const search = (q || "").trim();
@@ -100,6 +102,9 @@ export default async function ShopPage({
           }`}
         >
           All
+          <span className={`ml-1.5 text-[11px] ${!activeCat ? "text-white/80" : "text-ink-mute"}`}>
+            {totalProducts}
+          </span>
         </Link>
         {categories.map((c) => (
           <Link
@@ -113,6 +118,9 @@ export default async function ShopPage({
           >
             <CategoryIcon name={c.icon} className="w-3.5 h-3.5" />
             {c.name}
+            <span className={`text-[11px] ${activeCat?.id === c.id ? "text-white/80" : "text-ink-mute"}`}>
+              {c._count.products}
+            </span>
           </Link>
         ))}
       </div>

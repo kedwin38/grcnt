@@ -86,6 +86,14 @@ export async function POST(req: NextRequest) {
   }
   const paymentAccountId = [...resolvedAccountIds][0] ?? null;
 
+  // The account may have no phone on file (a Google-only customer) — fall
+  // back to whatever phone this specific order already collected, since one
+  // number to reach the customer about it is always required.
+  const customerPhone = user.phone || input.topupPhone || input.routerNumber || input.contactPhone;
+  if (!customerPhone) {
+    return fail("Enter a contact phone number.", 422);
+  }
+
   const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
 
   const order = await db.order.create({
@@ -93,7 +101,7 @@ export async function POST(req: NextRequest) {
       code: newOrderCode(),
       userId: user.id,
       customerName: user.name,
-      customerPhone: user.phone,
+      customerPhone,
       status: "PENDING_PAYMENT",
       fulfilment: input.fulfilment,
       address: input.fulfilment === "DELIVERY" ? input.address || null : null,

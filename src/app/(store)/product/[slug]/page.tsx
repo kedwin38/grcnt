@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, ChevronRight, Flame, PackageCheck, ShieldCheck, Timer, Truck } from "lucide-react";
+import { Check, ChevronRight, Flame, PackageCheck, ShieldCheck, Timer, Truck, Zap } from "lucide-react";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { formatKES } from "@/lib/format";
 import { parseAttributes, parseFields, parseImages } from "@/lib/catalog";
 import { ProductAction } from "@/components/store/ProductAction";
+import { RecentlyViewed } from "@/components/store/RecentlyViewed";
 
 export async function generateMetadata({
   params,
@@ -51,6 +52,7 @@ export default async function ProductPage({
   const attrs = parseAttributes(product);
   const specs = fields.filter((f) => attrs[f.key] !== undefined && attrs[f.key] !== "");
   const soldOut = product.stock !== null && product.stock <= 0;
+  const lowStock = !soldOut && product.stock !== null && product.stock <= product.lowStockAt;
 
   const cardData = {
     id: product.id,
@@ -162,6 +164,10 @@ export default async function ProductPage({
           <div className="mt-4">
             {soldOut ? (
               <span className="badge badge-gray text-sm px-4 py-2">Sold out — restocking soon</span>
+            ) : lowStock ? (
+              <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5">
+                <Zap className="w-4 h-4" /> Only {product.stock} left — order today
+              </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-700">
                 <Check className="w-4 h-4" />
@@ -214,6 +220,17 @@ export default async function ProductPage({
           </div>
         </div>
       </div>
+
+      <RecentlyViewed
+        current={{
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          price: product.price,
+          imageId: images[0]?.id ?? null,
+          categoryIcon: product.category.icon,
+        }}
+      />
 
       <script
         type="application/ld+json"

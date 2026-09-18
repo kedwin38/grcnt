@@ -75,7 +75,7 @@ export default async function AdminCustomersPage({
                       <Link href={`/admin/customers/${c.id}`} className="font-bold text-ink hover:text-brand-700">
                         {c.name}
                       </Link>
-                      <div className="text-[12px] text-ink-mute">{prettyPhone(c.phone)}</div>
+                      <div className="text-[12px] text-ink-mute">{c.phone ? prettyPhone(c.phone) : c.email || "Google account"}</div>
                     </td>
                     <td className="td text-[13px]">
                       {new Date(c.createdAt).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}

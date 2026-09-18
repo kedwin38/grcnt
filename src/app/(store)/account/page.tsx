@@ -11,9 +11,17 @@ export default async function AccountPage() {
     <div className="mx-auto max-w-xl px-4 sm:px-6 py-12">
       <h1 className="section-title">My profile</h1>
       <p className="text-ink-soft mt-1">
-        Signed in as <span className="font-semibold text-ink">{prettyPhone(user.phone)}</span>
+        Signed in as{" "}
+        <span className="font-semibold text-ink">
+          {user.phone ? prettyPhone(user.phone) : user.email || user.name}
+        </span>
       </p>
-      <ProfileForm name={user.name} email={user.email || ""} />
+      <ProfileForm
+        name={user.name}
+        email={user.email || ""}
+        phone={user.phone}
+        hasPassword={Boolean(user.passwordHash)}
+      />
     </div>
   );
 }
