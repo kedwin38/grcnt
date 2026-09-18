@@ -9,7 +9,8 @@ import { PasswordInput } from "@/components/PasswordInput";
 export function SecurityManager({ totpEnabled }: { totpEnabled: boolean }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(totpEnabled);
-  const [setupData, setSetupData] = useState<{ secret: string; otpauthUri: string } | null>(null);
+  const [setupData, setSetupData] = useState<{ secret: string; otpauthUri: string; qrDataUrl: string } | null>(null);
+  const [showManualEntry, setShowManualEntry] = useState(false);
   const [code, setCode] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
   const [showDisable, setShowDisable] = useState(false);
@@ -22,7 +23,7 @@ export function SecurityManager({ totpEnabled }: { totpEnabled: boolean }) {
     setNotice(null);
     setBusy(true);
     try {
-      const res = await api<{ secret: string; otpauthUri: string }>("/api/admin/security/totp/setup", { body: {} });
+      const res = await api<{ secret: string; otpauthUri: string; qrDataUrl: string }>("/api/admin/security/totp/setup", { body: {} });
       setSetupData(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start setup.");
@@ -103,14 +104,32 @@ export function SecurityManager({ totpEnabled }: { totpEnabled: boolean }) {
         <form onSubmit={confirmSetup} className="space-y-4 rounded-2xl border border-line bg-paper p-4">
           <div>
             <p className="text-[13px] text-ink-soft leading-relaxed">
-              Add this account to Google Authenticator, Authy, 1Password or any
-              TOTP app — scan a QR isn&apos;t available here, so use &ldquo;enter a setup
-              key manually&rdquo; and paste this secret:
+              Scan this with Google Authenticator, Authy, 1Password or any TOTP app:
             </p>
-            <div className="mt-2 rounded-xl bg-surface border border-line px-3.5 py-2.5 font-mono text-sm break-all select-all">
-              {setupData.secret}
+            <div className="mt-3 flex justify-center">
+              <div className="rounded-2xl border border-line bg-white p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={setupData.qrDataUrl} alt="Scan with your authenticator app" width={200} height={200} />
+              </div>
             </div>
-            <p className="field-hint mt-1.5 break-all">{setupData.otpauthUri}</p>
+            {!showManualEntry ? (
+              <button
+                type="button"
+                className="text-[13px] font-semibold text-brand-700 hover:underline mt-3 mx-auto block"
+                onClick={() => setShowManualEntry(true)}
+              >
+                Can&apos;t scan? Enter the code manually
+              </button>
+            ) : (
+              <div className="mt-3">
+                <p className="text-[13px] text-ink-soft leading-relaxed">
+                  In your app, choose &ldquo;enter a setup key manually&rdquo; and paste this secret:
+                </p>
+                <div className="mt-2 rounded-xl bg-surface border border-line px-3.5 py-2.5 font-mono text-sm break-all select-all">
+                  {setupData.secret}
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label className="label">Enter the 6-digit code to confirm</label>
