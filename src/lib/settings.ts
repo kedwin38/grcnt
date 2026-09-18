@@ -17,27 +17,6 @@ export type BusinessSettings = {
   announcement: string; // optional top-bar announcement
 };
 
-export type MpesaSettings = {
-  environment: "sandbox" | "production";
-  consumerKey: string;
-  consumerSecret: string;
-  passkey: string;
-  // Business Shortcode: the Store/HO number used at Daraja Go Live. Used for
-  // BusinessShortCode and the STK password (Shortcode+Passkey+Timestamp) in
-  // every transaction type — including Buy Goods, where it is NOT the same
-  // as the till number (see tillNumber below).
-  shortcode: string;
-  transactionType: "CustomerBuyGoodsOnline" | "CustomerPayBillOnline";
-  // Buy Goods (Till) only: the actual till number, sent as PartyB. Per
-  // Safaricom's own Daraja docs, Buy Goods STK Push requires BusinessShortCode
-  // (the Store/HO number above) and PartyB (this till number) to be two
-  // different values — sending the till number for both is the single most
-  // common cause of Daraja error 2002 ("Agent number and Store number do not
-  // match"). Ignored for Paybill, where BusinessShortCode and PartyB match.
-  tillNumber: string;
-  callbackBaseUrl: string; // empty = auto-detect from request
-};
-
 export type SeoSettings = {
   siteTitle: string;
   siteDescription: string;
@@ -64,7 +43,6 @@ export type BackupSettings = {
 
 export type AllSettings = {
   business: BusinessSettings;
-  mpesa: MpesaSettings;
   seo: SeoSettings;
   backup: BackupSettings;
 };
@@ -85,17 +63,6 @@ export const DEFAULT_SETTINGS: AllSettings = {
     tillNumber: "000000",
     openHours: "Mon – Sat, 8:00 AM – 7:00 PM",
     announcement: "",
-  },
-  mpesa: {
-    environment: "sandbox",
-    // Daraja public sandbox test app credentials (safe defaults to start with)
-    consumerKey: "",
-    consumerSecret: "",
-    passkey: "",
-    shortcode: "174379",
-    transactionType: "CustomerBuyGoodsOnline",
-    tillNumber: "",
-    callbackBaseUrl: "",
   },
   seo: {
     siteTitle: "Green Color Networks — Data Bundles, Airtime, Minutes & Phones",
@@ -123,7 +90,6 @@ export const DEFAULT_SETTINGS: AllSettings = {
 // Fields masked when displayed back in the admin UI (write-only inputs).
 export const SENSITIVE_FIELDS: Record<keyof AllSettings, string[]> = {
   business: [],
-  mpesa: ["consumerSecret", "passkey"],
   seo: [],
   backup: ["secretAccessKey"],
 };
@@ -145,13 +111,12 @@ export async function getSettingGroup<K extends keyof AllSettings>(
 }
 
 export async function getAllSettings(): Promise<AllSettings> {
-  const [business, mpesa, seo, backup] = await Promise.all([
+  const [business, seo, backup] = await Promise.all([
     getSettingGroup("business"),
-    getSettingGroup("mpesa"),
     getSettingGroup("seo"),
     getSettingGroup("backup"),
   ]);
-  return { business, mpesa, seo, backup };
+  return { business, seo, backup };
 }
 
 export async function saveSettingGroup<K extends keyof AllSettings>(

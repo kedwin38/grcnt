@@ -71,6 +71,21 @@ export async function POST(req: NextRequest) {
     return fail("Enter the router number to load the package onto.", 422);
   }
 
+  // An STK push can only pay into one till, so every item in the order must
+  // resolve to the same payment account — explicit per-product assignment,
+  // or the default account when unassigned.
+  const defaultAccount = await db.paymentAccount.findFirst({ where: { isDefault: true } });
+  const resolvedAccountIds = new Set(
+    lines.map((l) => l.product.paymentAccountId ?? defaultAccount?.id ?? null)
+  );
+  if (resolvedAccountIds.size > 1) {
+    return fail(
+      "Items in your cart are set up to pay into different tills — please check out in separate orders.",
+      422
+    );
+  }
+  const paymentAccountId = [...resolvedAccountIds][0] ?? null;
+
   const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
 
   const order = await db.order.create({
@@ -85,6 +100,7 @@ export async function POST(req: NextRequest) {
       topupPhone: hasInstant ? input.topupPhone : null,
       routerNumber: hasRouter ? input.routerNumber : null,
       notes: input.notes || null,
+      paymentAccountId,
       subtotal,
       total: subtotal,
       items: {

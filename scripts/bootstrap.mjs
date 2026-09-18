@@ -2,6 +2,7 @@
 // products. Safe to run on every start — only creates what's missing.
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 try {
   process.loadEnvFile();
@@ -16,6 +17,37 @@ const env = {
   adminPhone: process.env.ADMIN_PHONE || "254700000000",
   adminPassword: process.env.ADMIN_PASSWORD || "Admin#2026",
 };
+
+// Mirrors src/lib/crypto.ts exactly (same salt, same AES-256-GCM format) —
+// duplicated here because this script runs under plain `node`, not through
+// Next's TS path aliases, so it can't import that module directly. Any
+// value encrypted here must decrypt correctly in the running app, and
+// vice versa, so keep the two in lockstep if either ever changes.
+const SESSION_SECRET =
+  process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32
+    ? process.env.SESSION_SECRET
+    : "dev-insecure-secret-change-me-in-production-0123456789";
+const CRYPTO_KEY = crypto.scryptSync(SESSION_SECRET, "gcn-settings-salt-v1", 32);
+
+function encrypt(plain) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", CRYPTO_KEY, iv);
+  const ct = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `v1:${iv.toString("hex")}:${tag.toString("hex")}:${ct.toString("hex")}`;
+}
+
+function decrypt(payload) {
+  try {
+    const [v, ivHex, tagHex, ctHex] = payload.split(":");
+    if (v !== "v1") return payload;
+    const decipher = crypto.createDecipheriv("aes-256-gcm", CRYPTO_KEY, Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+    return Buffer.concat([decipher.update(Buffer.from(ctHex, "hex")), decipher.final()]).toString("utf8");
+  } catch {
+    return "";
+  }
+}
 
 async function seedAdmin() {
   const existingAdmin = await db.user.findFirst({ where: { role: "ADMIN" } });
@@ -203,10 +235,77 @@ async function seedWifiCategory() {
   console.log(`  ⚠ sample prices — edit them from Admin → Categories/Products`);
 }
 
+// Every site needs at least one PaymentAccount to take payments at all, and
+// the very first one created is automatically the default (see
+// createPaymentAccount in src/lib/payment-accounts.ts). Sites that were
+// already live before multi-till support shipped had their single till's
+// credentials in a "mpesa" Setting row — pull them across here so nothing
+// has to be re-entered. Gated on payment-account count, not on the old row
+// existing, so a genuinely fresh install still gets one empty account to
+// fill in.
+async function migrateDefaultPaymentAccount() {
+  const existingCount = await db.paymentAccount.count();
+  if (existingCount > 0) {
+    console.log(`• payment accounts exist (${existingCount})`);
+    return;
+  }
+
+  let cfg = {
+    label: "Default account",
+    environment: "sandbox",
+    consumerKey: "",
+    consumerSecret: "",
+    passkey: "",
+    shortcode: "174379",
+    transactionType: "CustomerBuyGoodsOnline",
+    tillNumber: "",
+    callbackBaseUrl: "",
+  };
+
+  const oldMpesaRow = await db.setting.findUnique({ where: { key: "mpesa" } });
+  if (oldMpesaRow) {
+    try {
+      const parsed = JSON.parse(decrypt(oldMpesaRow.value));
+      cfg = {
+        label: "Default account (migrated)",
+        environment: parsed.environment || "sandbox",
+        consumerKey: parsed.consumerKey || "",
+        consumerSecret: parsed.consumerSecret || "",
+        passkey: parsed.passkey || "",
+        shortcode: parsed.shortcode || "174379",
+        transactionType: parsed.transactionType || "CustomerBuyGoodsOnline",
+        tillNumber: parsed.tillNumber || "",
+        callbackBaseUrl: parsed.callbackBaseUrl || "",
+      };
+      console.log("• migrating the existing M-Pesa settings into a payment account");
+    } catch {
+      console.log("• could not read legacy M-Pesa settings — creating an empty default account");
+    }
+  }
+
+  await db.paymentAccount.create({
+    data: {
+      label: cfg.label,
+      environment: cfg.environment,
+      consumerKey: encrypt(cfg.consumerKey),
+      consumerSecret: encrypt(cfg.consumerSecret),
+      passkey: encrypt(cfg.passkey),
+      shortcode: cfg.shortcode,
+      transactionType: cfg.transactionType,
+      tillNumber: cfg.tillNumber || null,
+      callbackBaseUrl: cfg.callbackBaseUrl || null,
+      isDefault: true,
+      active: true,
+    },
+  });
+  console.log(`✓ payment account created: ${cfg.label}`);
+}
+
 async function main() {
   await seedAdmin();
   await seedCatalog();
   await seedWifiCategory();
+  await migrateDefaultPaymentAccount();
 }
 
 main()

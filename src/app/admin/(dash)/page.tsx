@@ -13,8 +13,8 @@ import {
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/session";
 import { formatDateTime, formatKES } from "@/lib/format";
-import { getSettingGroup } from "@/lib/settings";
 import { isSimulated } from "@/lib/daraja";
+import { decrypt } from "@/lib/crypto";
 import { RevenueBars, StatusDonut } from "@/components/admin/Charts";
 import { OrderStatusBadge } from "@/components/store/OrderStatus";
 
@@ -45,7 +45,7 @@ export default async function AdminDashboard() {
     statusCounts,
     topProductsRaw,
     dailyRevenueRaw,
-    mpesa,
+    defaultAccount,
     recentPaymentFailures,
   ] = await Promise.all([
     db.order.aggregate({
@@ -82,7 +82,7 @@ export default async function AdminDashboard() {
       where: { status: { in: [...PAID_STATUSES] }, createdAt: { gte: start30 } },
       select: { createdAt: true, total: true },
     }),
-    getSettingGroup("mpesa"),
+    db.paymentAccount.findFirst({ where: { isDefault: true } }),
     db.auditLog.findMany({
       where: { action: "payment.stk_failed", createdAt: { gte: start24h } },
       select: { details: true },
@@ -93,11 +93,12 @@ export default async function AdminDashboard() {
   // never see the reason a payment can't start (that's admin-only detail) —
   // this is where the admin finds out instead.
   const mpesaFieldsMissing =
-    !mpesa.consumerKey ||
-    !mpesa.consumerSecret ||
-    !mpesa.passkey ||
-    !mpesa.shortcode ||
-    (mpesa.transactionType === "CustomerBuyGoodsOnline" && !mpesa.tillNumber);
+    !defaultAccount ||
+    !decrypt(defaultAccount.consumerKey) ||
+    !decrypt(defaultAccount.consumerSecret) ||
+    !decrypt(defaultAccount.passkey) ||
+    !defaultAccount.shortcode ||
+    (defaultAccount.transactionType === "CustomerBuyGoodsOnline" && !defaultAccount.tillNumber);
   const mpesaNotConfigured = !isSimulated() && mpesaFieldsMissing;
   // Codes that mean "this admin's M-Pesa setup is wrong," as opposed to a
   // normal customer-side decline (cancelled, timed out, insufficient funds).

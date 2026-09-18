@@ -2,14 +2,18 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/session";
 import { parseFields } from "@/lib/catalog";
+import { listPaymentAccounts } from "@/lib/payment-accounts";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 export default async function NewProductPage() {
   await requireStaff();
-  const categories = await db.category.findMany({
-    where: { active: true },
-    orderBy: { sortOrder: "asc" },
-  });
+  const [categories, paymentAccounts] = await Promise.all([
+    db.category.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+    listPaymentAccounts(),
+  ]);
 
   return (
     <div className="space-y-5 max-w-5xl">
@@ -39,6 +43,7 @@ export default async function NewProductPage() {
             instantTopup: c.instantTopup,
             fields: parseFields(c),
           }))}
+          paymentAccounts={paymentAccounts.map((a) => ({ id: a.id, label: a.label, isDefault: a.isDefault }))}
         />
       )}
     </div>

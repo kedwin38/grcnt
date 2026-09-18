@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { apiUser } from "@/lib/session";
 import { stkQuery, isSimulated, DARAJA_TERMINAL_FAILURE_CODES } from "@/lib/daraja";
+import { getPaymentAccount } from "@/lib/payment-accounts";
 import { newOrderCode } from "@/lib/codes";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +74,8 @@ export async function GET(
   // Safety net: query Daraja directly when the callback is late.
   if (!payment.simulated && ageMs > 12000 && payment.checkoutRequestId) {
     try {
-      const result = await stkQuery(payment.checkoutRequestId);
+      const account = await getPaymentAccount(order.paymentAccountId);
+      const result = await stkQuery(account, payment.checkoutRequestId);
       const rc = result.ResultCode ?? result.ResponseCode;
       if (rc === "0") {
         const receipt = extractReceiptQuery(result);

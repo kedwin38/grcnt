@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Flame, ImagePlus, Loader2, Save, Star, Trash2, X } from "lucide-react";
+import { AlertCircle, Flame, ImagePlus, Loader2, Save, Star, Trash2, Wallet, X } from "lucide-react";
 import { api } from "@/lib/client";
 
 export type AdminCategory = {
@@ -13,6 +13,12 @@ export type AdminCategory = {
   tracksStock: boolean;
   instantTopup: boolean;
   fields: { key: string; label: string; type: "text" | "number" | "select"; unit?: string; options?: string[] }[];
+};
+
+export type AdminPaymentAccount = {
+  id: number;
+  label: string;
+  isDefault: boolean;
 };
 
 export type ProductFormValues = {
@@ -29,14 +35,17 @@ export type ProductFormValues = {
   active: boolean;
   featured: boolean;
   hotSale: boolean;
+  paymentAccountId: number | null;
   sortOrder: string;
 };
 
 export function ProductForm({
   categories,
+  paymentAccounts,
   initial,
 }: {
   categories: AdminCategory[];
+  paymentAccounts: AdminPaymentAccount[];
   initial?: ProductFormValues;
 }) {
   const router = useRouter();
@@ -56,6 +65,9 @@ export function ProductForm({
   const [active, setActive] = useState(initial?.active ?? true);
   const [featured, setFeatured] = useState(initial?.featured ?? false);
   const [hotSale, setHotSale] = useState(initial?.hotSale ?? false);
+  const [paymentAccountId, setPaymentAccountId] = useState<number | null>(
+    initial?.paymentAccountId ?? null
+  );
   const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? "0");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -108,6 +120,7 @@ export function ProductForm({
         active,
         featured,
         hotSale,
+        paymentAccountId,
         sortOrder: Math.max(0, parseInt(sortOrder || "0", 10) || 0),
       };
       if (!body.name || !body.price) throw new Error("Name and price are required.");
@@ -297,6 +310,24 @@ export function ProductForm({
               vs. the was-price above.
             </p>
           ) : null}
+          <div>
+            <label className="label flex items-center gap-1.5">
+              <Wallet className="w-3.5 h-3.5 text-brand-600" /> Payment account
+            </label>
+            <select
+              className="input"
+              value={paymentAccountId ?? ""}
+              onChange={(e) => setPaymentAccountId(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">
+                Use default {paymentAccounts.find((a) => a.isDefault)?.label ? `(${paymentAccounts.find((a) => a.isDefault)?.label})` : ""}
+              </option>
+              {paymentAccounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.label}</option>
+              ))}
+            </select>
+            <p className="field-hint">Which till this product&apos;s payments settle to.</p>
+          </div>
         </div>
 
         {error ? (

@@ -1,6 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { saveSettingGroup } from "@/lib/settings";
 import { stkPush, DARAJA_TERMINAL_FAILURE_CODES } from "@/lib/daraja";
+import type { ResolvedPaymentAccount } from "@/lib/payment-accounts";
+
+function makeCfg(overrides: Partial<ResolvedPaymentAccount> = {}): ResolvedPaymentAccount {
+  return {
+    id: 1,
+    label: "Test account",
+    environment: "sandbox",
+    consumerKey: "key",
+    consumerSecret: "secret",
+    passkey: "passkey",
+    shortcode: "600123",
+    transactionType: "CustomerBuyGoodsOnline",
+    tillNumber: "3547433",
+    callbackBaseUrl: "",
+    ...overrides,
+  };
+}
 
 describe("DARAJA_TERMINAL_FAILURE_CODES", () => {
   it("classifies only confirmed final outcomes as terminal", () => {
@@ -52,11 +68,7 @@ describe("stkPush — Buy Goods vs Paybill shortcode handling", () => {
   }
 
   it("sends BusinessShortCode and PartyB as two different values for Buy Goods", async () => {
-    await saveSettingGroup("mpesa", {
-      environment: "sandbox",
-      consumerKey: "key",
-      consumerSecret: "secret",
-      passkey: "passkey",
+    const cfg = makeCfg({
       shortcode: "600123", // Store/HO number
       transactionType: "CustomerBuyGoodsOnline",
       tillNumber: "3547433", // actual till number
@@ -64,7 +76,7 @@ describe("stkPush — Buy Goods vs Paybill shortcode handling", () => {
     const capture: { body?: string } = {};
     mockFetch(capture);
 
-    await stkPush({
+    await stkPush(cfg, {
       amount: 1,
       phone: "254700000000",
       accountReference: "TEST",
@@ -79,11 +91,7 @@ describe("stkPush — Buy Goods vs Paybill shortcode handling", () => {
   });
 
   it("sends BusinessShortCode and PartyB as the same value for Paybill", async () => {
-    await saveSettingGroup("mpesa", {
-      environment: "sandbox",
-      consumerKey: "key",
-      consumerSecret: "secret",
-      passkey: "passkey",
+    const cfg = makeCfg({
       shortcode: "174379",
       transactionType: "CustomerPayBillOnline",
       tillNumber: "",
@@ -91,7 +99,7 @@ describe("stkPush — Buy Goods vs Paybill shortcode handling", () => {
     const capture: { body?: string } = {};
     mockFetch(capture);
 
-    await stkPush({
+    await stkPush(cfg, {
       amount: 1,
       phone: "254700000000",
       accountReference: "TEST",
@@ -105,11 +113,7 @@ describe("stkPush — Buy Goods vs Paybill shortcode handling", () => {
   });
 
   it("fails fast with no network call when Buy Goods has no till number configured", async () => {
-    await saveSettingGroup("mpesa", {
-      environment: "sandbox",
-      consumerKey: "key",
-      consumerSecret: "secret",
-      passkey: "passkey",
+    const cfg = makeCfg({
       shortcode: "600123",
       transactionType: "CustomerBuyGoodsOnline",
       tillNumber: "",
@@ -118,7 +122,7 @@ describe("stkPush — Buy Goods vs Paybill shortcode handling", () => {
     global.fetch = fetchSpy as unknown as typeof fetch;
 
     await expect(
-      stkPush({
+      stkPush(cfg, {
         amount: 1,
         phone: "254700000000",
         accountReference: "TEST",

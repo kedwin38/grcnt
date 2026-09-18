@@ -1,12 +1,25 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { LogoMark } from "@/components/brand/Logo";
 import { currentUser } from "@/lib/session";
-import { AdminLoginForm } from "./AdminLoginForm";
+import { env } from "@/lib/env";
+import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 
-export const metadata: Metadata = { title: "Admin log in", robots: { index: false } };
+export const metadata: Metadata = { title: "Sign in", robots: { index: false, follow: false } };
 
-export default async function AdminLoginPage() {
+// The staff/admin sign-in page deliberately does not live at a guessable URL
+// like /admin/login — everything under /admin 404s for anyone without a
+// session (see middleware.ts), so this single, otherwise-unremarkable path
+// segment is the only door in. Anything that doesn't match the configured
+// secret just 404s exactly like every other unknown route on the site.
+export default async function GatePage({
+  params,
+}: {
+  params: Promise<{ gate: string }>;
+}) {
+  const { gate } = await params;
+  if (gate !== env.adminLoginPath) notFound();
+
   const user = await currentUser();
   if (user && (user.role === "ADMIN" || user.role === "STAFF")) redirect("/admin");
 

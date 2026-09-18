@@ -38,6 +38,10 @@ export async function PATCH(
     if (!category) return fail("Category not found.", 422);
     tracksStock = category.tracksStock;
   }
+  if (input.paymentAccountId) {
+    const account = await db.paymentAccount.findUnique({ where: { id: input.paymentAccountId } });
+    if (!account) return fail("Payment account not found.", 422);
+  }
 
   const data: Record<string, unknown> = {};
   if (input.name !== undefined) data.name = input.name;
@@ -51,6 +55,7 @@ export async function PATCH(
   if (input.active !== undefined) data.active = input.active;
   if (input.featured !== undefined) data.featured = input.featured;
   if (input.hotSale !== undefined) data.hotSale = input.hotSale;
+  if (input.paymentAccountId !== undefined) data.paymentAccountId = input.paymentAccountId || null;
   if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
   if (input.categoryId !== undefined) data.categoryId = input.categoryId;
 

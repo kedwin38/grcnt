@@ -135,6 +135,7 @@ export const productSchema = z.object({
   active: z.boolean().default(true),
   featured: z.boolean().default(false),
   hotSale: z.boolean().default(false),
+  paymentAccountId: z.number().int().positive().nullable().optional(),
   sortOrder: z.number().int().min(0).max(9999).default(0),
 });
 
@@ -161,7 +162,8 @@ export const businessSettingsSchema = z.object({
   announcement: z.string().trim().max(160).optional().or(z.literal("")),
 });
 
-export const mpesaSettingsSchema = z.object({
+export const paymentAccountSchema = z.object({
+  label: z.string().trim().min(2, "Give this account a name").max(60),
   environment: z.enum(["sandbox", "production"]),
   consumerKey: z.string().trim().max(120).optional().or(z.literal("")),
   consumerSecret: z.string().trim().max(120).optional().or(z.literal("")),
@@ -181,6 +183,17 @@ export const mpesaSettingsSchema = z.object({
     .max(200)
     .optional()
     .or(z.literal("")),
+  active: z.boolean().default(true),
+});
+
+// ─── Admin: two-factor auth ──────────────────────────────────────────────────
+
+export const totpCodeSchema = z.object({
+  code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code"),
+});
+
+export const totpDisableSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password"),
 });
 
 export const seoSettingsSchema = z.object({

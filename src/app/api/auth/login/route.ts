@@ -47,6 +47,19 @@ export async function POST(req: NextRequest) {
   }
 
   clearLoginFails(lockKey);
+
+  // Staff/admin accounts can require a second factor. Password is correct at
+  // this point, but the real session (uid/role/name) is withheld until the
+  // TOTP code checks out too — only a short-lived "which user is mid-login"
+  // marker is stored for now.
+  if (user.role !== "CUSTOMER" && user.totpEnabled) {
+    const session = await getSession();
+    session.pendingTotpUserId = user.id;
+    session.pendingTotpExpiresAt = Date.now() + 5 * 60_000;
+    await session.save();
+    return ok({ requiresTotp: true });
+  }
+
   const session = await getSession();
   session.uid = user.id;
   session.role = user.role;

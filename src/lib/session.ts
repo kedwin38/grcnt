@@ -1,6 +1,6 @@
 import { getIronSession, IronSession, SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import type { Role, User } from "@prisma/client";
 import { db } from "./db";
 import { env } from "./env";
@@ -9,6 +9,10 @@ export type SessionData = {
   uid?: number;
   role?: Role;
   name?: string;
+  // Set between "password verified" and "TOTP code verified" for accounts
+  // with 2FA enabled — never a substitute for a real, logged-in session.
+  pendingTotpUserId?: number;
+  pendingTotpExpiresAt?: number;
 };
 
 export const SESSION_COOKIE = "gcn_sid";
@@ -43,20 +47,25 @@ export async function requireUser(next = "/account") {
   return user;
 }
 
+// Unauthenticated/wrong-role visits to anything under /admin must reveal
+// nothing — middleware already 404s when there's no session cookie at all;
+// this is the defense-in-depth path for a present-but-invalid session
+// (deactivated user, stale cookie). Same rule either way: just 404, never a
+// redirect that confirms an admin login exists somewhere.
 export async function requireStaff(): Promise<
   Omit<User, "role"> & { role: "STAFF" | "ADMIN" }
 > {
   const user = await currentUser();
   if (!user || (user.role !== "STAFF" && user.role !== "ADMIN")) {
-    redirect("/admin/login");
+    notFound();
   }
-  // redirect() throws, so from here user is guaranteed staff
+  // notFound() throws, so from here user is guaranteed staff
   return user as Omit<User, "role"> & { role: "STAFF" | "ADMIN" };
 }
 
 export async function requireAdmin() {
   const user = await currentUser();
-  if (!user || user.role !== "ADMIN") redirect("/admin/login");
+  if (!user || user.role !== "ADMIN") notFound();
   return user;
 }
 

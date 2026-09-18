@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/session";
 import { parseAttributes, parseFields, parseImages } from "@/lib/catalog";
+import { listPaymentAccounts } from "@/lib/payment-accounts";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 export default async function EditProductPage({
@@ -15,12 +16,13 @@ export default async function EditProductPage({
   const productId = parseInt(id, 10);
   if (!Number.isInteger(productId)) notFound();
 
-  const [product, categories] = await Promise.all([
+  const [product, categories, paymentAccounts] = await Promise.all([
     db.product.findUnique({
       where: { id: productId },
       include: { category: true },
     }),
     db.category.findMany({ orderBy: { sortOrder: "asc" } }),
+    listPaymentAccounts(),
   ]);
   if (!product) notFound();
 
@@ -51,6 +53,7 @@ export default async function EditProductPage({
           instantTopup: c.instantTopup,
           fields: parseFields(c),
         }))}
+        paymentAccounts={paymentAccounts.map((a) => ({ id: a.id, label: a.label, isDefault: a.isDefault }))}
         initial={{
           id: product.id,
           categoryId: product.categoryId,
@@ -67,6 +70,7 @@ export default async function EditProductPage({
           active: product.active,
           featured: product.featured,
           hotSale: product.hotSale,
+          paymentAccountId: product.paymentAccountId,
           sortOrder: String(product.sortOrder),
         }}
       />

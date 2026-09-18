@@ -17,6 +17,8 @@ import {
   LogOut,
   Menu,
   X,
+  Wallet,
+  ShieldCheck,
 } from "lucide-react";
 import { LogoMark } from "@/components/brand/Logo";
 import { api } from "@/lib/client";
@@ -28,8 +30,10 @@ const NAV = [
   { href: "/admin/categories", label: "Categories", icon: Layers, roles: ["STAFF", "ADMIN"] },
   { href: "/admin/customers", label: "Customers", icon: Users, roles: ["STAFF", "ADMIN"] },
   { href: "/admin/support", label: "Support inbox", icon: Headset, roles: ["STAFF", "ADMIN"] },
+  { href: "/admin/payment-accounts", label: "Payment accounts", icon: Wallet, roles: ["ADMIN"] },
   { href: "/admin/staff", label: "Staff", icon: UserCog, roles: ["ADMIN"] },
   { href: "/admin/settings", label: "Settings", icon: Settings, roles: ["ADMIN"] },
+  { href: "/admin/security", label: "My security", icon: ShieldCheck, roles: ["STAFF", "ADMIN"] },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText, roles: ["ADMIN"] },
 ];
 
@@ -72,7 +76,7 @@ export function AdminShell({
     } catch {
       /* ignore */
     }
-    router.push("/admin/login");
+    router.push("/");
     router.refresh();
   }
 

@@ -24,6 +24,8 @@ model User {
   passwordHash String
   role         Role     @default(CUSTOMER)
   active       Boolean  @default(true)
+  totpSecret   String? // encrypted TOTP secret (staff/admin 2FA only)
+  totpEnabled  Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -73,12 +75,14 @@ model Product {
   active         Boolean  @default(true)
   featured       Boolean  @default(false)
   hotSale        Boolean  @default(false) // shows a "Hot Sale" badge on the storefront
+  paymentAccountId Int? // which till this product settles to; null = default account
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  orderItems OrderItem[]
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentAccount PaymentAccount? @relation(fields: [paymentAccountId], references: [id], onDelete: SetNull)
+  orderItems     OrderItem[]
 }
 
 model ImageAsset {
@@ -122,14 +126,40 @@ model Order {
   subtotal      Int
   total         Int
   topupRef      String? // Safaricom top-up transaction reference
+  paymentAccountId Int? // which till this order was charged to
   cancelledAt   DateTime?
   refundedAt    DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id])
-  items    OrderItem[]
-  payments Payment[]
+  user           User            @relation(fields: [userId], references: [id])
+  paymentAccount PaymentAccount? @relation(fields: [paymentAccountId], references: [id], onDelete: SetNull)
+  items          OrderItem[]
+  payments       Payment[]
+}
+
+// A single Daraja till/paybill's credentials. Admins can add several so
+// different products can settle to different business accounts — an STK
+// push always goes to exactly one till, so every order resolves to exactly
+// one PaymentAccount (via its items' assigned account, or the default).
+model PaymentAccount {
+  id              Int      @id @default(autoincrement())
+  label           String // admin-facing name, e.g. "Main Shop Till"
+  environment     String // "sandbox" | "production"
+  consumerKey     String // encrypted
+  consumerSecret  String // encrypted
+  passkey         String // encrypted
+  shortcode       String // Business Shortcode (Store/HO number at Go Live)
+  transactionType String // "CustomerBuyGoodsOnline" | "CustomerPayBillOnline"
+  tillNumber      String? // Buy Goods only — the actual till, sent as PartyB
+  callbackBaseUrl String? // empty = auto-detect from request
+  isDefault       Boolean  @default(false)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  products Product[]
+  orders   Order[]
 }
 
 model OrderItem {

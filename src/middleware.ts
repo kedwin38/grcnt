@@ -17,12 +17,20 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/account") ||
     pathname.startsWith("/checkout") ||
     (pathname.startsWith("/orders") && pathname !== "/orders/track");
-  const needsStaff =
-    pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
+  // Everything under /admin requires a session cookie — there is no public
+  // "/admin/login" to redirect to (that would announce the admin area to
+  // anyone probing paths). The real sign-in page lives at a separate,
+  // non-guessable path outside /admin entirely; visiting /admin without a
+  // session just 404s like any other unknown route.
+  const needsStaff = pathname.startsWith("/admin");
 
-  if ((needsUser || needsStaff) && !req.cookies.get(SESSION_COOKIE)) {
-    const login = needsStaff ? "/admin/login" : `/login?next=${encodeURIComponent(pathname)}`;
-    return NextResponse.redirect(new URL(login, req.url));
+  if (needsUser && !req.cookies.get(SESSION_COOKIE)) {
+    return NextResponse.redirect(
+      new URL(`/login?next=${encodeURIComponent(pathname)}`, req.url)
+    );
+  }
+  if (needsStaff && !req.cookies.get(SESSION_COOKIE)) {
+    return NextResponse.rewrite(new URL(`/__404__${pathname}`, req.url));
   }
 
   const res = NextResponse.next();
