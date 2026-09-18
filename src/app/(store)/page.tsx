@@ -24,6 +24,16 @@ import { Reveal } from "@/components/store/Reveal";
 import { CountUp } from "@/components/store/CountUp";
 import { prettyPhone } from "@/lib/format";
 
+// A small cycling palette so the category grid reads as a designed
+// collage rather than one flat green tile repeated N times.
+const CATEGORY_TINTS = [
+  { border: "border-brand-100", iconBg: "bg-brand-100", iconText: "text-brand-600" },
+  { border: "border-amber-100", iconBg: "bg-amber-100", iconText: "text-amber-600" },
+  { border: "border-sky-100", iconBg: "bg-sky-100", iconText: "text-sky-600" },
+  { border: "border-violet-100", iconBg: "bg-violet-100", iconText: "text-violet-600" },
+  { border: "border-rose-100", iconBg: "bg-rose-100", iconText: "text-rose-600" },
+];
+
 export default async function HomePage() {
   const business = await getSettingGroup("business");
 
@@ -181,20 +191,30 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Wave divider into the (white) trust bar below */}
+        <svg
+          viewBox="0 0 1440 48"
+          preserveAspectRatio="none"
+          className="absolute bottom-0 left-0 w-full h-8 sm:h-12 pointer-events-none"
+          aria-hidden="true"
+        >
+          <path d="M0,24 C240,48 480,0 720,12 C960,24 1200,48 1440,24 L1440,48 L0,48 Z" fill="#ffffff" />
+        </svg>
       </section>
 
       {/* ── Trust bar ─────────────────────────────────────────────────────── */}
       <section className="border-b border-line bg-surface">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { icon: Timer, title: "Instant delivery", text: "Top-ups processed in seconds" },
-            { icon: ShieldCheck, title: "Pay with M-Pesa", text: "Till " + business.tillNumber + " — STK push, no hassle" },
-            { icon: Sparkles, title: "Fair prices", text: "Bundle deals updated weekly" },
-            { icon: Headset, title: "Real human support", text: "Talk to us on " + prettyPhone(business.phone) },
+            { icon: Timer, title: "Instant delivery", text: "Top-ups processed in seconds", tint: "bg-brand-100 text-brand-600" },
+            { icon: ShieldCheck, title: "Pay with M-Pesa", text: "Till " + business.tillNumber + " — STK push, no hassle", tint: "bg-sky-100 text-sky-600" },
+            { icon: Sparkles, title: "Fair prices", text: "Bundle deals updated weekly", tint: "bg-amber-100 text-amber-600" },
+            { icon: Headset, title: "Real human support", text: "Talk to us on " + prettyPhone(business.phone), tint: "bg-violet-100 text-violet-600" },
           ].map((f) => (
             <div key={f.title} className="flex items-start gap-3">
-              <div className="w-10 h-10 shrink-0 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center">
-                <f.icon className="w-5 h-5 text-brand-600" />
+              <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${f.tint}`}>
+                <f.icon className="w-5 h-5" />
               </div>
               <div>
                 <div className="text-sm font-bold text-ink">{f.title}</div>
@@ -206,7 +226,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Stats band (social proof) ────────────────────────────────────── */}
-      <section className="bg-brand-950 text-white">
+      <section className="relative overflow-hidden bg-brand-950 text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 grid grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((s, i) => (
             <Reveal key={s.label} delay={i * 90} className="text-center lg:text-left">
@@ -220,72 +240,96 @@ export default async function HomePage() {
             </Reveal>
           ))}
         </div>
+
+        {/* Wave divider into the (paper) categories section below */}
+        <svg
+          viewBox="0 0 1440 48"
+          preserveAspectRatio="none"
+          className="absolute bottom-0 left-0 w-full h-8 sm:h-12 pointer-events-none"
+          aria-hidden="true"
+        >
+          <path d="M0,24 C240,0 480,48 720,36 C960,24 1200,0 1440,24 L1440,48 L0,48 Z" fill="#fbfdf9" />
+        </svg>
       </section>
 
       {/* ── Categories ────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-        <Reveal className="flex items-end justify-between gap-4">
-          <div>
-            <div className="section-eyebrow">Categories</div>
-            <h2 className="section-title mt-1">What can we get you today?</h2>
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 -z-10" aria-hidden="true">
+          <div className="absolute -top-10 right-0 w-72 h-72 rounded-full bg-brand-100/50 blur-3xl" />
+          <div className="absolute top-52 -left-20 w-64 h-64 rounded-full bg-amber-100/40 blur-3xl" />
+        </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
+          <Reveal className="flex items-end justify-between gap-4">
+            <div>
+              <div className="section-eyebrow">Categories</div>
+              <h2 className="section-title mt-1">What can we get you today?</h2>
+            </div>
+            <Link href="/shop" className="btn btn-md btn-outline shrink-0">
+              View all <ChevronRight className="w-4 h-4" />
+            </Link>
+          </Reveal>
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {categories.map((cat, i) => {
+              const tint = CATEGORY_TINTS[i % CATEGORY_TINTS.length];
+              const tilt = i % 2 === 0 ? "-rotate-1" : "rotate-1";
+              return (
+                <Reveal key={cat.id} delay={i * 60}>
+                  <Link
+                    href={`/shop?cat=${cat.slug}`}
+                    className={`card card-hover p-5 flex flex-col items-center text-center gap-2.5 group ${tilt} hover:rotate-0 ${tint.border}`}
+                  >
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${tint.iconBg}`}>
+                      <CategoryIcon name={cat.icon} className={`w-6 h-6 ${tint.iconText}`} />
+                    </div>
+                    <div className="font-bold text-sm text-ink">{cat.name}</div>
+                    <div className="text-xs text-ink-mute">
+                      {cat._count.products} product{cat._count.products === 1 ? "" : "s"}
+                    </div>
+                  </Link>
+                </Reveal>
+              );
+            })}
           </div>
-          <Link href="/shop" className="btn btn-md btn-outline shrink-0">
-            View all <ChevronRight className="w-4 h-4" />
-          </Link>
-        </Reveal>
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categories.map((cat, i) => (
-            <Reveal key={cat.id} delay={i * 60}>
-              <Link
-                href={`/shop?cat=${cat.slug}`}
-                className="card card-hover p-5 flex flex-col items-center text-center gap-2.5 group"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-                  <CategoryIcon name={cat.icon} className="w-6 h-6 text-brand-600" />
-                </div>
-                <div className="font-bold text-sm text-ink">{cat.name}</div>
-                <div className="text-xs text-ink-mute">
-                  {cat._count.products} product{cat._count.products === 1 ? "" : "s"}
-                </div>
-              </Link>
-            </Reveal>
-          ))}
         </div>
       </section>
 
       {/* ── Bundle sections ───────────────────────────────────────────────── */}
-      {bundleSections.map(({ cat, products }) =>
-        products.length > 0 ? (
-          <section key={cat.id} className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-            <Reveal className="flex items-end justify-between gap-4">
-              <div>
-                <div className="section-eyebrow">{cat.name}</div>
-                <h2 className="section-title mt-1">
-                  {cat.slug.includes("data")
-                    ? "Stay connected for less"
-                    : cat.slug.includes("minute")
-                      ? "Talk more, pay less"
-                      : cat.slug.includes("airtime")
-                        ? "Top up in a tap"
-                        : cat.slug.includes("wifi") || cat.slug.includes("router")
-                          ? "Router packages, sorted"
-                          : cat.name}
-                </h2>
+      {bundleSections.map(({ cat, products }, sectionIndex) => {
+        if (products.length === 0) return null;
+        const tinted = sectionIndex % 2 === 1;
+        return (
+          <div key={cat.id} className={tinted ? "bg-brand-50/40" : undefined}>
+            <section className={`mx-auto max-w-7xl px-4 sm:px-6 pt-14 ${tinted ? "pb-14" : ""}`}>
+              <Reveal className="flex items-end justify-between gap-4">
+                <div>
+                  <div className="section-eyebrow">{cat.name}</div>
+                  <h2 className="section-title mt-1">
+                    {cat.slug.includes("data")
+                      ? "Stay connected for less"
+                      : cat.slug.includes("minute")
+                        ? "Talk more, pay less"
+                        : cat.slug.includes("airtime")
+                          ? "Top up in a tap"
+                          : cat.slug.includes("wifi") || cat.slug.includes("router")
+                            ? "Router packages, sorted"
+                            : cat.name}
+                  </h2>
+                </div>
+                <Link href={`/shop?cat=${cat.slug}`} className="btn btn-md btn-outline shrink-0">
+                  See all <ChevronRight className="w-4 h-4" />
+                </Link>
+              </Reveal>
+              <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+                {products.map((p, i) => (
+                  <Reveal key={p.id} delay={i * 60}>
+                    <ProductCard product={toCardProduct(p)} />
+                  </Reveal>
+                ))}
               </div>
-              <Link href={`/shop?cat=${cat.slug}`} className="btn btn-md btn-outline shrink-0">
-                See all <ChevronRight className="w-4 h-4" />
-              </Link>
-            </Reveal>
-            <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-              {products.map((p, i) => (
-                <Reveal key={p.id} delay={i * 60}>
-                  <ProductCard product={toCardProduct(p)} />
-                </Reveal>
-              ))}
-            </div>
-          </section>
-        ) : null
-      )}
+            </section>
+          </div>
+        );
+      })}
 
       {/* ── Featured phones ───────────────────────────────────────────────── */}
       {featured.length > 0 ? (
@@ -361,8 +405,9 @@ export default async function HomePage() {
 
       {/* ── Support CTA ───────────────────────────────────────────────────── */}
       <Reveal className="mx-auto max-w-7xl px-4 sm:px-6 pt-14">
-        <div className="card card-hover p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
-          <div className="flex items-start gap-4">
+        <div className="relative overflow-hidden card card-hover p-8 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
+          <div className="absolute -right-16 -bottom-20 w-56 h-56 rounded-full bg-brand-100/60 blur-3xl" aria-hidden="true" />
+          <div className="flex items-start gap-4 relative">
             <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center shrink-0">
               <Headset className="w-6 h-6 text-brand-600" />
             </div>
