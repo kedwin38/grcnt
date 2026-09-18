@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import QRCode from "qrcode";
 import { db } from "@/lib/db";
 import { ok, fail, assertCsrf } from "@/lib/api";
 import { apiUser } from "@/lib/session";
@@ -20,8 +21,8 @@ export async function POST(req: NextRequest) {
   const secret = generateTotpSecret();
   await db.user.update({ where: { id: user.id }, data: { totpSecret: encrypt(secret) } });
 
-  return ok({
-    secret,
-    otpauthUri: otpauthUri(secret, user.phone || user.name, "Green Color Networks"),
-  });
+  const uri = otpauthUri(secret, user.phone || user.name, "Green Color Networks");
+  const qrDataUrl = await QRCode.toDataURL(uri, { width: 240, margin: 1 });
+
+  return ok({ secret, otpauthUri: uri, qrDataUrl });
 }
