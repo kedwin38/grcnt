@@ -22,6 +22,7 @@ export default async function AdminOrderDetail({
       items: true,
       payments: { orderBy: { createdAt: "desc" } },
       user: { select: { id: true, name: true, phone: true, createdAt: true } },
+      paymentAccount: { select: { label: true } },
     },
   });
   if (!order) notFound();
@@ -159,13 +160,19 @@ export default async function AdminOrderDetail({
               </div>
             ) : null}
             {paidPayment ? (
-              <div className="pt-3 border-t border-line">
+              <div className="pt-3 border-t border-line space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-ink-soft">M-Pesa receipt</span>
                   <span className="font-extrabold text-brand-700">
                     {paidPayment.mpesaReceipt || "—"}
                   </span>
                 </div>
+                {order.paymentAccount ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-ink-soft">Paid to</span>
+                    <span className="font-semibold text-ink">{order.paymentAccount.label}</span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

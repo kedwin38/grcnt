@@ -13,10 +13,21 @@ export const env = {
   // Local demo mode: simulate the M-Pesa STK flow without calling Daraja.
   mpesaSimulate: (process.env.MPESA_SIMULATE || "").toLowerCase() === "true",
   isProd: process.env.NODE_ENV === "production",
+  // The admin sign-in page lives at this path instead of a guessable
+  // "/admin/login" — anything under /admin is otherwise a plain 404 to
+  // anyone without a session. Set ADMIN_LOGIN_PATH in production to a value
+  // only staff know; the fallback here is a reasonable default, not a secret.
+  adminLoginPath: (process.env.ADMIN_LOGIN_PATH || "staff-gateway-7k2x").replace(/^\/+|\/+$/g, ""),
 };
 
 if (env.isProd && env.sessionSecret.startsWith("dev-insecure")) {
   console.error(
     "⚠️  SESSION_SECRET is not configured. Set a strong 32+ character secret before going live."
+  );
+}
+
+if (env.isProd && env.adminLoginPath === "staff-gateway-7k2x") {
+  console.error(
+    "⚠️  ADMIN_LOGIN_PATH is not configured — the admin login is using the default path. Set a private value before going live."
   );
 }

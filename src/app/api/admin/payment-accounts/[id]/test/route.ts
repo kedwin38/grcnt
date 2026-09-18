@@ -8,7 +8,7 @@ import {
   isSimulated,
   DARAJA_TERMINAL_FAILURE_CODES,
 } from "@/lib/daraja";
-import { getSettingGroup } from "@/lib/settings";
+import { getPaymentAccount, PaymentAccountError } from "@/lib/payment-accounts";
 import { z } from "zod";
 import { normalizePhone } from "@/lib/format";
 
@@ -22,15 +22,15 @@ function sleep(ms: number) {
 function describeTerminalFailure(code: string, desc: string): string {
   switch (code) {
     case "1032":
-      return `The prompt reached the phone but was cancelled (no PIN entered) — “${desc}”. That's actually a good sign: your till, passkey and callback are working. Try again and enter the PIN this time to fully confirm.`;
+      return `The prompt reached the phone but was cancelled (no PIN entered) — "${desc}". That's actually a good sign: your till, passkey and callback are working. Try again and enter the PIN this time to fully confirm.`;
     case "1":
-      return `The prompt reached the phone but the M-Pesa balance was too low to complete it — “${desc}”. This confirms your till, passkey and callback are working; top up and retry, or treat this as passed.`;
+      return `The prompt reached the phone but the M-Pesa balance was too low to complete it — "${desc}". This confirms your till, passkey and callback are working; top up and retry, or treat this as passed.`;
     case "1037":
-      return `Daraja couldn't get a response from the phone in time — “${desc}”. If you didn't see a prompt at all, double-check the phone number and try again; a single timeout isn't necessarily a configuration problem.`;
+      return `Daraja couldn't get a response from the phone in time — "${desc}". If you didn't see a prompt at all, double-check the phone number and try again; a single timeout isn't necessarily a configuration problem.`;
     case "2001":
-      return `Daraja rejected the request — “${desc}”. This can mean a wrong PIN was entered, or that the shortcode/passkey pair is mismatched. If you didn't get a prompt at all, check Settings → M-Pesa.`;
+      return `Daraja rejected the request — "${desc}". This can mean a wrong PIN was entered, or that the shortcode/passkey pair is mismatched. If you didn't get a prompt at all, check this account's settings.`;
     default:
-      return `Daraja reported a failure — “${desc}” (code ${code}).`;
+      return `Daraja reported a failure — "${desc}" (code ${code}).`;
   }
 }
 
@@ -39,14 +39,22 @@ const testSchema = z.object({
   amount: z.number().int().min(1).max(200).optional(),
 });
 
-// Verifies Daraja credentials (OAuth) and optionally sends a real KSh 1 test
-// STK push — the surest way to confirm till configuration end to end.
-export async function POST(req: NextRequest) {
+// Verifies one payment account's Daraja credentials (OAuth) and optionally
+// sends a real KSh 1 test STK push — the surest way to confirm till
+// configuration end to end.
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const csrf = assertCsrf(req);
   if (csrf) return csrf;
 
   const user = await apiUser();
   if (!user || user.role !== "ADMIN") return fail("Admin access required.", 403);
+
+  const { id } = await params;
+  const accountId = parseInt(id, 10);
+  if (!Number.isInteger(accountId)) return fail("Invalid account.", 422);
 
   if (isSimulated()) {
     return ok({
@@ -57,13 +65,16 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const cfg = await getSettingGroup("mpesa");
-  if (!cfg.consumerKey || !cfg.consumerSecret || !cfg.passkey) {
-    return fail("Fill in consumer key, consumer secret and passkey first, then save.", 422);
+  let cfg;
+  try {
+    cfg = await getPaymentAccount(accountId);
+  } catch (err) {
+    if (err instanceof PaymentAccountError) return fail(err.message, 422);
+    throw err;
   }
 
   try {
-    await getDarajaToken(true);
+    await getDarajaToken(cfg, true);
   } catch (err) {
     return fail(err instanceof Error ? err.message : "Could not authenticate with Daraja.", 502);
   }
@@ -75,7 +86,7 @@ export async function POST(req: NextRequest) {
   if (parsed.success && phone) {
     let checkoutRequestId: string;
     try {
-      const res = await stkPush({
+      const res = await stkPush(cfg, {
         amount: 1,
         phone,
         accountReference: "TEST",
@@ -101,13 +112,13 @@ export async function POST(req: NextRequest) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       await sleep(10_000);
       try {
-        const result = await stkQuery(checkoutRequestId);
+        const result = await stkQuery(cfg, checkoutRequestId);
         const rc = result.ResultCode ?? result.ResponseCode;
         if (rc === "0") {
           return ok({
             tokenOk: true,
             stkOk: true,
-            message: `Confirmed: the push to ${phone} completed successfully (Ref: ${checkoutRequestId}). Your till, passkey and callback are all working.`,
+            message: `Confirmed: the push to ${phone} completed successfully (Ref: ${checkoutRequestId}). This account's till, passkey and callback are all working.`,
           });
         }
         if (rc !== undefined && rc !== null && rc !== "" && DARAJA_TERMINAL_FAILURE_CODES.has(String(rc))) {
@@ -131,6 +142,6 @@ export async function POST(req: NextRequest) {
 
   return ok({
     tokenOk: true,
-    message: "Daraja credentials are correct — OAuth token received. Use “Send KSh 1 test push” to fully verify the till.",
+    message: `Daraja credentials for "${cfg.label}" are correct — OAuth token received. Use "Send KSh 1 test push" to fully verify the till.`,
   });
 }

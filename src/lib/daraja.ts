@@ -1,8 +1,10 @@
 // Safaricom Daraja (M-Pesa) service — OAuth token cache, STK Push (Lipa na
-// M-Pesa Online), and STK Push Query. All credentials come from the
-// admin-editable settings table; nothing is hardcoded.
-import { getSettingGroup } from "./settings";
+// M-Pesa Online), and STK Push Query. Credentials are passed in explicitly
+// (resolved per-order from src/lib/payment-accounts.ts) so different
+// products can settle to different tills — nothing is hardcoded or read
+// from a single global settings row.
 import { env } from "./env";
+import type { ResolvedPaymentAccount } from "./payment-accounts";
 
 const TOKEN_CACHE = new Map<string, { token: string; expiresAt: number }>();
 
@@ -45,15 +47,14 @@ function basicAuth(key: string, secret: string) {
   return `Basic ${Buffer.from(`${key}:${secret}`).toString("base64")}`;
 }
 
-export async function getDarajaToken(force = false): Promise<string> {
-  const cfg = await getSettingGroup("mpesa");
+export async function getDarajaToken(cfg: ResolvedPaymentAccount, force = false): Promise<string> {
   if (!cfg.consumerKey || !cfg.consumerSecret) {
     throw new DarajaError(
-      "Daraja credentials are not configured. Add them under Admin → Settings → M-Pesa.",
+      `Daraja credentials are not configured for "${cfg.label}". Add them under Admin → Payment Accounts.`,
       "NOT_CONFIGURED"
     );
   }
-  const cacheKey = `${cfg.environment}:${cfg.consumerKey}`;
+  const cacheKey = `${cfg.id}:${cfg.environment}:${cfg.consumerKey}`;
   const cached = TOKEN_CACHE.get(cacheKey);
   if (!force && cached && cached.expiresAt > Date.now() + 30_000) {
     return cached.token;
@@ -66,7 +67,7 @@ export async function getDarajaToken(force = false): Promise<string> {
     const text = await res.text().catch(() => "");
     if (res.status === 400 || res.status === 401) {
       throw new DarajaError(
-        "Daraja rejected the consumer key/secret. Check Admin → Settings → M-Pesa.",
+        `Daraja rejected the consumer key/secret for "${cfg.label}". Check Admin → Payment Accounts.`,
         "BAD_CREDENTIALS"
       );
     }
@@ -88,15 +89,16 @@ export type StkPushResult = {
   CustomerMessage: string;
 };
 
-export async function stkPush(opts: {
-  amount: number;
-  phone: string; // 2547XXXXXXXX
-  accountReference: string; // order code
-  description: string;
-  callbackUrl: string;
-}): Promise<StkPushResult> {
-  const cfg = await getSettingGroup("mpesa");
-
+export async function stkPush(
+  cfg: ResolvedPaymentAccount,
+  opts: {
+    amount: number;
+    phone: string; // 2547XXXXXXXX
+    accountReference: string; // order code
+    description: string;
+    callbackUrl: string;
+  }
+): Promise<StkPushResult> {
   // Buy Goods (Till) STK Push requires BusinessShortCode (the Store/HO number
   // used at Go Live) and PartyB (the till number) to be two different values
   // — per Safaricom's own Daraja FAQ. Sending the till number for both is the
@@ -104,14 +106,14 @@ export async function stkPush(opts: {
   // entered do not match"). Paybill has no such split.
   if (cfg.transactionType === "CustomerBuyGoodsOnline" && !cfg.tillNumber) {
     throw new DarajaError(
-      "Till number is not configured. Add it under Admin → Settings → M-Pesa — Buy Goods requires the Business Shortcode (Store/HO number) and the Till Number as two separate values.",
+      `Till number is not configured for "${cfg.label}". Buy Goods requires the Business Shortcode (Store/HO number) and the Till Number as two separate values.`,
       "TILL_NOT_CONFIGURED"
     );
   }
   const partyB =
     cfg.transactionType === "CustomerBuyGoodsOnline" ? cfg.tillNumber : cfg.shortcode;
 
-  const token = await getDarajaToken();
+  const token = await getDarajaToken(cfg);
   const timestamp = darajaTimestamp();
   const password = Buffer.from(
     `${cfg.shortcode}${cfg.passkey}${timestamp}`
@@ -157,9 +159,11 @@ export type StkQueryResult = {
   CheckoutRequestID: string;
 };
 
-export async function stkQuery(checkoutRequestId: string): Promise<StkQueryResult> {
-  const cfg = await getSettingGroup("mpesa");
-  const token = await getDarajaToken();
+export async function stkQuery(
+  cfg: ResolvedPaymentAccount,
+  checkoutRequestId: string
+): Promise<StkQueryResult> {
+  const token = await getDarajaToken(cfg);
   const timestamp = darajaTimestamp();
   const password = Buffer.from(
     `${cfg.shortcode}${cfg.passkey}${timestamp}`

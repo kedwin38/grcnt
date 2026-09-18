@@ -1,9 +1,39 @@
 import { db } from "@/lib/db";
+import { encrypt } from "@/lib/crypto";
 
 let counter = 0;
 function unique(prefix: string) {
   counter += 1;
   return `${prefix}-${Date.now()}-${counter}`;
+}
+
+/**
+ * A working Daraja payment account for tests. Every order/payment fixture
+ * gets its own — the real routes resolve credentials via
+ * order.paymentAccountId, so tests must have a real row to point at rather
+ * than relying on some shared "default" (multiple test files share one
+ * physical SQLite file, so a global default would be a cross-file race).
+ */
+export async function makeTestPaymentAccount(opts: {
+  transactionType?: "CustomerBuyGoodsOnline" | "CustomerPayBillOnline";
+  tillNumber?: string | null;
+  isDefault?: boolean;
+} = {}) {
+  return db.paymentAccount.create({
+    data: {
+      label: unique("Test Till"),
+      environment: "sandbox",
+      consumerKey: encrypt("test-consumer-key"),
+      consumerSecret: encrypt("test-consumer-secret"),
+      passkey: encrypt("test-passkey"),
+      shortcode: "600123",
+      transactionType: opts.transactionType ?? "CustomerBuyGoodsOnline",
+      tillNumber: opts.tillNumber === undefined ? "3547433" : opts.tillNumber,
+      callbackBaseUrl: null,
+      isDefault: opts.isDefault ?? false,
+      active: true,
+    },
+  });
 }
 
 // Vitest runs each test file in its own worker process, and every file
@@ -32,6 +62,8 @@ export async function makePendingOrderWithPayment(opts: {
   const qty = opts.qty ?? 2;
   const unitPrice = opts.unitPrice ?? 50;
   const total = qty * unitPrice;
+
+  const paymentAccount = await makeTestPaymentAccount();
 
   const user = await db.user.create({
     data: {
@@ -68,6 +100,7 @@ export async function makePendingOrderWithPayment(opts: {
       customerPhone: user.phone,
       status: "PENDING_PAYMENT",
       fulfilment: opts.fulfilment ?? "INSTANT_TOPUP",
+      paymentAccountId: paymentAccount.id,
       subtotal: total,
       total,
       topupPhone: user.phone,
@@ -98,7 +131,7 @@ export async function makePendingOrderWithPayment(opts: {
     },
   });
 
-  return { user, category, product, order, payment };
+  return { user, category, product, order, payment, paymentAccount };
 }
 
 export async function reload<T extends { id: number }>(

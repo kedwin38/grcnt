@@ -26,6 +26,11 @@ export async function POST(req: NextRequest) {
   const category = await db.category.findUnique({ where: { id: input.categoryId } });
   if (!category) return fail("Category not found.", 422);
 
+  if (input.paymentAccountId) {
+    const account = await db.paymentAccount.findUnique({ where: { id: input.paymentAccountId } });
+    if (!account) return fail("Payment account not found.", 422);
+  }
+
   // Base slug, de-duplicated with a short suffix on conflict
   let slug = slugify(input.name);
   if (await db.product.findUnique({ where: { slug } })) {
@@ -47,6 +52,7 @@ export async function POST(req: NextRequest) {
       active: input.active,
       featured: input.featured,
       hotSale: input.hotSale,
+      paymentAccountId: input.paymentAccountId || null,
       sortOrder: input.sortOrder,
     },
   });

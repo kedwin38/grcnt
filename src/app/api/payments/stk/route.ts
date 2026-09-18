@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ok, fail, assertCsrf, readJson, resolveOrigin } from "@/lib/api";
 import { apiUser } from "@/lib/session";
 import { stkSchema, zodMessage } from "@/lib/validation";
-import { getSettingGroup } from "@/lib/settings";
+import { getPaymentAccount, PaymentAccountError } from "@/lib/payment-accounts";
 import { stkPush, DarajaError, isSimulated } from "@/lib/daraja";
 import { rateLimit } from "@/lib/ratelimit";
 import { audit } from "@/lib/audit";
@@ -29,8 +29,28 @@ export async function POST(req: NextRequest) {
   });
   if (!order) return fail("Order not found or already paid.", 404);
 
-  const mpesa = await getSettingGroup("mpesa");
-  const callbackUrl = `${resolveOrigin(req, mpesa.callbackBaseUrl || undefined)}/api/mpesa/callback`;
+  let account;
+  try {
+    account = await getPaymentAccount(order.paymentAccountId);
+  } catch (err) {
+    if (err instanceof PaymentAccountError) {
+      console.error(`stk push for order ${order.code}: ${err.message} [${err.code}]`);
+      await audit(
+        { id: user.id, name: user.name },
+        "payment.stk_failed",
+        "order",
+        order.code,
+        { error: err.message, code: err.code }
+      );
+      return fail(
+        "We couldn't start the M-Pesa payment right now. Please try again in a moment, or contact support if this continues.",
+        502,
+        "PAYMENT_UNAVAILABLE"
+      );
+    }
+    throw err;
+  }
+  const callbackUrl = `${resolveOrigin(req, account.callbackBaseUrl || undefined)}/api/mpesa/callback`;
 
   // Local/demo simulation — no Daraja call, no internet required.
   if (isSimulated()) {
@@ -53,7 +73,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const res = await stkPush({
+    const res = await stkPush(account, {
       amount: order.total,
       phone,
       accountReference: order.code,
